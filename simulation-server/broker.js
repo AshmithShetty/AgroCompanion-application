@@ -1,9 +1,8 @@
 const aedes = require('aedes')();
 const ws = require('websocket-stream');
 
-function setupBroker(httpServer) {
+aedes.attachServer = function(httpServer) {
   ws.createServer({ server: httpServer }, aedes.handle);
-  return aedes;
-}
+};
 
-module.exports = setupBroker;
+module.exports = aedes;

@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
-const setupBroker = require('./broker');
+const broker = require('./broker');
 const Simulator = require('./simulator');
 const DataLogger = require('./logger');
 
@@ -10,7 +10,7 @@ app.use(cors());
 app.use(express.json());
 
 const server = http.createServer(app);
-setupBroker(server);
+broker.attachServer(server);
 
 app.post('/sensor/update', (req, res) => {
   const { sensor, value } = req.body;
