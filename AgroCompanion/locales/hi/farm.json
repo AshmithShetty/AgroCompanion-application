@@ -1,0 +1,12 @@
+{
+  "dashboard": {
+    "title": "खेत डैशबोर्ड",
+    "totalArea": "कुल क्षेत्रफल",
+    "activeCrops": "सक्रिय फसलें"
+  },
+  "fields": {
+    "title": "खेत",
+    "addField": "खेत जोड़ें",
+    "area": "क्षेत्रफल"
+  }
+}

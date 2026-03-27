@@ -1,0 +1,8 @@
+{
+  "dashboard": {
+    "title": "Market Prices",
+    "commodity": "Commodity",
+    "price": "Price",
+    "trend": "Trend"
+  }
+}

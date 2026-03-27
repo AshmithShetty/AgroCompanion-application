@@ -1,0 +1,9 @@
+{
+  "network": {
+    "offline": "You are offline. Showing cached data.",
+    "syncFailed": "Sync failed. Will retry later."
+  },
+  "general": {
+    "somethingWentWrong": "Something went wrong."
+  }
+}

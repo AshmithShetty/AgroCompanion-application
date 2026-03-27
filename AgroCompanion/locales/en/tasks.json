@@ -1,0 +1,12 @@
+{
+  "calendar": {
+    "title": "Task Calendar",
+    "upcoming": "Upcoming Tasks",
+    "completed": "Completed"
+  },
+  "status": {
+    "overdue": "Overdue",
+    "pending": "Pending",
+    "done": "Done"
+  }
+}

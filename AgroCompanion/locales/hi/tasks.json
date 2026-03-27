@@ -1,0 +1,12 @@
+{
+  "calendar": {
+    "title": "कार्य कैलेंडर",
+    "upcoming": "आगामी कार्य",
+    "completed": "पूरा हुआ"
+  },
+  "status": {
+    "overdue": "अतिदेय",
+    "pending": "लंबित",
+    "done": "हो गया"
+  }
+}

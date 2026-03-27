@@ -1,0 +1,12 @@
+{
+  "dashboard": {
+    "title": "Farm Dashboard",
+    "totalArea": "Total Area",
+    "activeCrops": "Active Crops"
+  },
+  "fields": {
+    "title": "Fields",
+    "addField": "Add Field",
+    "area": "Area"
+  }
+}

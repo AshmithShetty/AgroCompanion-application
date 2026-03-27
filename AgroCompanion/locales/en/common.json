@@ -1,0 +1,13 @@
+{
+  "module": {
+    "screen": {
+      "element": {
+        "welcome": "Welcome to AgroCompanion",
+        "continue": "Continue",
+        "skip": "Skip",
+        "settings": "Settings",
+        "language": "Language"
+      }
+    }
+  }
+}

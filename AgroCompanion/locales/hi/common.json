@@ -1,0 +1,13 @@
+{
+  "module": {
+    "screen": {
+      "element": {
+        "welcome": "एग्रीसिस्ट में आपका स्वागत है",
+        "continue": "जारी रखें",
+        "skip": "छोड़ें",
+        "settings": "सेटिंग्स",
+        "language": "भाषा"
+      }
+    }
+  }
+}

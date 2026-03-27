@@ -1,0 +1,7 @@
+{
+  "chat": {
+    "title": "AI Assistant",
+    "placeholder": "Ask me about your farm...",
+    "voicePrompt": "Listening..."
+  }
+}

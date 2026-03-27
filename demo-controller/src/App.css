@@ -1,0 +1,32 @@
+* { box-sizing: border-box; font-family: sans-serif; }
+body { margin: 0; background: #f4f4f9; color: #333; }
+.container { padding: 20px; max-width: 1400px; margin: 0 auto; }
+.header { background: #2E7D32; color: white; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; }
+.header h1 { margin: 0; font-size: 24px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.panel h2 { margin-top: 0; font-size: 18px; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
+.state-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.state-card { background: #f9f9f9; padding: 15px; border-radius: 6px; text-align: center; border: 1px solid #e0e0e0; }
+.state-label { display: block; font-size: 11px; color: #666; text-transform: uppercase; margin-bottom: 5px; }
+.state-value { font-size: 18px; font-weight: bold; color: #2E7D32; }
+.controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+button { background: #2E7D32; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+button:hover { background: #1B5E20; }
+.slider-container { display: flex; flex-direction: column; gap: 15px; }
+.slider-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding-top: 15px; border-top: 1px solid #eee; }
+.slider-group label { display: block; font-size: 12px; margin-bottom: 5px; font-weight: bold; color: #555; }
+.slider-group input { width: 100%; display: inline-block; vertical-align: middle; }
+.speed-group { background: #e8f5e9; padding: 10px; border-radius: 6px; border: 1px solid #c8e6c9; }
+.speed-group label { color: #2E7D32; font-size: 14px; }
+.speed-control { display: flex; align-items: center; }
+.speed-control span { margin-left: 10px; font-weight: bold; color: #2E7D32; }
+.log-panel { grid-column: 1 / -1; }
+.log-stream { height: 250px; overflow-y: auto; background: #1e1e1e; color: #4af626; padding: 10px; border-radius: 6px; font-family: monospace; font-size: 13px; }
+.app-stream { color: #fff; background: #112233; }
+.log-entry { margin-bottom: 5px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; }
+.log-time { color: #888; margin-right: 10px; }
+.log-topic { color: #56b6c2; margin-right: 10px; }
+.log-action { color: #e5c07b; margin-right: 10px; font-weight: bold; }
+.log-detail { color: #98c379; }
+.log-payload { color: #e5c07b; }
