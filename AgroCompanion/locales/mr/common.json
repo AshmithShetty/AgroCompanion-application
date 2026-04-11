@@ -1,0 +1,55 @@
+{
+  "app": {
+    "loading": "लोड होत आहे..."
+  },
+  "module": {
+    "screen": {
+      "element": {
+        "welcome": "अॅग्रोकोम्पॅनियनमध्ये आपले स्वागत आहे",
+        "continue": "पुढे जा",
+        "skip": "वगळा",
+        "settings": "सेटिंग्ज",
+        "language": "भाषा"
+      }
+    }
+  },
+  "alerts": {
+    "error": "त्रुटी",
+    "permissionRequired": "परवानगी आवश्यक"
+  },
+  "status": {
+    "connecting": "कनेक्ट होत आहे",
+    "online": "ऑनलाइन",
+    "offline": "ऑफलाइन"
+  },
+  "onboarding": {
+    "subtitle": "प्रिसिजन एआयच्या मदतीने शेतीचे भविष्य.",
+    "welcomeBackTitle": "पुन्हा स्वागत आहे",
+    "welcomeBackSubtitle": "आपल्या शेतात प्रवेश करण्यासाठी आपले अनन्य वापरकर्तानाव लिहा.",
+    "usernameLabel": "वापरकर्तानाव",
+    "usernamePlaceholder": "उदा. farmer_john",
+    "login": "खात्यात लॉगिन करा",
+    "createAccount": "नवीन खाते तयार करा",
+    "or": "किंवा"
+  },
+  "profile": {
+    "title": "प्रोफाइल आणि सेटिंग्ज",
+    "accountDetails": "खाते तपशील",
+    "usernamePrefix": "वापरकर्तानाव:",
+    "activeFarmPrefix": "सक्रिय शेत:",
+    "activeCropSession": "सक्रिय पीक सत्र",
+    "cropPrefix": "पीक:",
+    "methodPrefix": "पद्धत:",
+    "startedPrefix": "सुरुवात:",
+    "switchSession": "शेत सत्र बदला",
+    "logout": "लॉग आउट"
+  },
+  "assistant": {
+    "languageLabel": "भाषा",
+    "languagePlaceholder": "भाषा निवडा",
+    "aiReachError": "एआयशी संपर्क करण्यात अडचण आली. कृपया पुन्हा प्रयत्न करा.",
+    "imageAnalysisFailed": "प्रतिमा विश्लेषण अयशस्वी झाले. कृपया पुन्हा प्रयत्न करा.",
+    "microphoneError": "मायक्रोफोन त्रुटी किंवा बोलणे ओळखता आले नाही.",
+    "allowPhotoLibrary": "कृपया आपल्या फोटो लायब्ररीसाठी प्रवेश परवानगी द्या."
+  }
+}

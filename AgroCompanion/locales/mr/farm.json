@@ -1,0 +1,29 @@
+{
+  "dashboard": {
+    "title": "शेत डॅशबोर्ड",
+    "weather": "हवामान",
+    "upcomingTasks": "आगामी कामे",
+    "activeFields": "सक्रिय शेतक्षेत्र",
+    "moisture": "आर्द्रता",
+    "temperature": "तापमान",
+    "humidity": "आर्द्रता",
+    "feelsLike": "जाणवते"
+    ,
+    "totalArea": "एकूण क्षेत्रफळ",
+    "activeCrops": "सक्रिय पिके",
+    "farmFallback": "शेत",
+    "ndviTitle": "सस्य आरोग्य (NDVI)",
+    "ndviScoreLabel": "NDVI स्कोर",
+    "vegHealthConfidenceSuffix": "सस्य आरोग्य विश्वास",
+    "healthScore": "आरोग्य स्कोर",
+    "observedPrefix": "निरीक्षण:"
+    ,
+    "nodeStatus": "नोड स्थिती"
+  }
+  ,
+  "fields": {
+    "title": "शेतक्षेत्र",
+    "addField": "शेतक्षेत्र जोडा",
+    "area": "क्षेत्रफळ"
+  }
+}

@@ -1,4 +1,7 @@
 {
+  "app": {
+    "loading": "लोड हो रहा है..."
+  },
   "module": {
     "screen": {
       "element": {
@@ -9,5 +12,44 @@
         "language": "भाषा"
       }
     }
+  },
+  "alerts": {
+    "error": "त्रुटि",
+    "permissionRequired": "अनुमति आवश्यक"
+  },
+  "status": {
+    "connecting": "कनेक्ट हो रहा है",
+    "online": "ऑनलाइन",
+    "offline": "ऑफ़लाइन"
+  },
+  "onboarding": {
+    "subtitle": "सटीक एआई के साथ खेती का भविष्य।",
+    "welcomeBackTitle": "वापसी पर स्वागत है",
+    "welcomeBackSubtitle": "अपने खेत तक पहुँचने के लिए अपना अनूठा उपयोगकर्ता नाम दर्ज करें।",
+    "usernameLabel": "उपयोगकर्ता नाम",
+    "usernamePlaceholder": "जैसे farmer_john",
+    "login": "खाते में लॉगिन करें",
+    "createAccount": "नया खाता बनाएँ",
+    "or": "या"
+  },
+  "profile": {
+    "title": "प्रोफ़ाइल और सेटिंग्स",
+    "accountDetails": "खाता विवरण",
+    "usernamePrefix": "उपयोगकर्ता नाम:",
+    "activeFarmPrefix": "सक्रिय खेत:",
+    "activeCropSession": "सक्रिय फसल सत्र",
+    "cropPrefix": "फसल:",
+    "methodPrefix": "विधि:",
+    "startedPrefix": "प्रारंभ:",
+    "switchSession": "फार्म सत्र बदलें",
+    "logout": "लॉग आउट"
+  },
+  "assistant": {
+    "languageLabel": "भाषा",
+    "languagePlaceholder": "भाषा चुनें",
+    "aiReachError": "एआई तक पहुँचने में समस्या हुई। कृपया पुनः प्रयास करें।",
+    "imageAnalysisFailed": "छवि विश्लेषण विफल रहा। कृपया पुनः प्रयास करें।",
+    "microphoneError": "माइक्रोफ़ोन त्रुटि या भाषण पहचाना नहीं गया।",
+    "allowPhotoLibrary": "कृपया अपनी फोटो लाइब्रेरी तक पहुँच की अनुमति दें।"
   }
 }

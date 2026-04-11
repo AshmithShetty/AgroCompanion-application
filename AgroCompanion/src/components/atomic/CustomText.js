@@ -12,37 +12,42 @@ export const CustomText = ({ children, variant = 'body', style, color, ...props 
     let isMounted = true;
     const currentLang = i18n.language;
 
-    if (currentLang === 'en' || !children) {
-      setDisplayText(children);
-      return;
-    }
-
     const hasEnglishLetters = (str) => typeof str === 'string' && /[a-zA-Z]/.test(str);
 
-    if (hasEnglishLetters(children)) {
-      AppTranslator.translate(children, currentLang, (translated) => {
-        if (isMounted) setDisplayText(translated);
-      });
-      return;
-    }
+    const run = async () => {
+      if (!children) {
+        if (isMounted) setDisplayText(children);
+        return;
+      }
 
-    if (Array.isArray(children)) {
-      const translationPromises = children.map(child => {
-        if (hasEnglishLetters(child)) {
-          return new Promise(resolve => AppTranslator.translate(child, currentLang, resolve));
-        }
-        return Promise.resolve(child);
-      });
+      const shouldTranslate = (text) => props.dynamic || (currentLang !== 'en' && hasEnglishLetters(text));
 
-      Promise.all(translationPromises).then(translatedArray => {
+      if (Array.isArray(children)) {
+        const translationPromises = children.map(child => {
+          if (shouldTranslate(child)) {
+            return new Promise(resolve => AppTranslator.translate(child, currentLang, resolve));
+          }
+          return Promise.resolve(child);
+        });
+
+        const translatedArray = await Promise.all(translationPromises);
         if (isMounted) setDisplayText(translatedArray);
-      });
-      return;
-    }
+        return;
+      }
 
-    setDisplayText(children);
+      if (shouldTranslate(children)) {
+        AppTranslator.translate(children, currentLang, (translated) => {
+          if (isMounted) setDisplayText(translated);
+        });
+        return;
+      }
+
+      if (isMounted) setDisplayText(children);
+    };
+
+    run();
     return () => { isMounted = false; };
-  }, [children, i18n.language]);
+  }, [children, i18n.language, props.dynamic]);
   const getFontFamily = () => {
     const isHeading = ['display', 'h1', 'h2', 'heading', 'subheading'].includes(variant);
     const family = isHeading ? 'Poppins' : 'Inter';

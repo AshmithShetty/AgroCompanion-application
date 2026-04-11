@@ -28,7 +28,7 @@ const parseJson = (value, fallback) => {
 export const HomeScreen = () => {
   const { t } = useTranslation(['farm', 'common', 'errors']);
   const [recentTasks, setRecentTasks] = useState([]);
-  const [connectionStatus, setConnectionStatus] = useState('Connecting');
+  const [connectionStatus, setConnectionStatus] = useState('connecting');
   const [weatherData, setWeatherData] = useState(null);
   const [ndviData, setNdviData] = useState(null);
   const currentFarm = useUserSessionStore(state => state.currentFarm);
@@ -43,7 +43,7 @@ export const HomeScreen = () => {
   const clampedNdvi = Math.max(-1, Math.min(1, ndviScore));
   const healthScore = Math.max(0, Math.min(100, Math.round(clampedNdvi * 100)));
   const confidencePercent = Math.max(0, Math.min(100, Math.round(((clampedNdvi + 1) / 2) * 100)));
-  const ndviLabel = `${currentFarm?.districtName || 'Farm'} NDVI`;
+  const ndviLabel = `${currentFarm?.districtName || t('farm:dashboard.farmFallback', 'Farm')} NDVI`;
   const providerLabel = ndviData?.provider ? String(ndviData.provider).toUpperCase() : '';
   const observedLabel = ndviData?.observationDate ? new Date(ndviData.observationDate).toLocaleDateString() : '';
 
@@ -120,8 +120,8 @@ export const HomeScreen = () => {
         DataAggregator.cacheLatestValue(data.type, data.value);
 
       }),
-      EventBusService.subscribe(EVENT_TOPICS.NODE_CONNECTION_RESTORED, () => setConnectionStatus('Online')),
-      EventBusService.subscribe(EVENT_TOPICS.NODE_CONNECTION_LOST, (data) => setConnectionStatus(`Offline (${data.status})`))
+      EventBusService.subscribe(EVENT_TOPICS.NODE_CONNECTION_RESTORED, () => setConnectionStatus('online')),
+      EventBusService.subscribe(EVENT_TOPICS.NODE_CONNECTION_LOST, () => setConnectionStatus('offline'))
     ];
 
     return () => {
@@ -162,8 +162,8 @@ export const HomeScreen = () => {
       <ScrollView contentContainerStyle={styles.content}>
 
         <View style={styles.statusRow}>
-          <CustomText variant="caption" color={connectionStatus === 'Online' ? theme.colors.primary : theme.colors.error}>
-            {t('farm:dashboard.nodeStatus', 'Node Status')}: {connectionStatus}
+          <CustomText variant="caption" color={connectionStatus === 'online' ? theme.colors.primary : theme.colors.error}>
+            {t('farm:dashboard.nodeStatus', 'Node Status')}: {t(`common:status.${connectionStatus}`, connectionStatus)}
           </CustomText>
         </View>
 
@@ -244,7 +244,7 @@ export const HomeScreen = () => {
         {ndviData && (
           <>
             <Card>
-              <CustomText variant="subheading">Vegetation Health (NDVI)</CustomText>
+              <CustomText variant="subheading">{t('farm:dashboard.ndviTitle', 'Vegetation Health (NDVI)')}</CustomText>
               <Spacer size="sm" />
               <View style={styles.ndviHeroOuter}>
                 <View style={styles.ndviHeroInner}>
@@ -255,13 +255,13 @@ export const HomeScreen = () => {
                     {clampedNdvi.toFixed(2)}
                   </CustomText>
                   <CustomText style={styles.ndviHeroSubtitle} color={theme.colors.white}>
-                    NDVI score
+                    {t('farm:dashboard.ndviScoreLabel', 'NDVI score')}
                   </CustomText>
                   <View style={styles.ndviBarTrack}>
                     <View style={[styles.ndviBarFill, { width: `${Math.max(6, confidencePercent)}%` }]} />
                   </View>
                   <CustomText style={styles.ndviConfidence} color={theme.colors.white}>
-                    {confidencePercent}% vegetation health confidence
+                    {confidencePercent}% {t('farm:dashboard.vegHealthConfidenceSuffix', 'vegetation health confidence')}
                   </CustomText>
                 </View>
               </View>
@@ -272,7 +272,7 @@ export const HomeScreen = () => {
                     {healthScore}%
                   </CustomText>
                   <CustomText variant="caption" color={theme.colors.textLight}>
-                    Health Score
+                    {t('farm:dashboard.healthScore', 'Health Score')}
                   </CustomText>
                 </View>
                 <View style={styles.ndviFooterRight}>
@@ -280,7 +280,7 @@ export const HomeScreen = () => {
                     {providerLabel}
                   </CustomText>
                   <CustomText variant="caption" color={theme.colors.textLight}>
-                    Observed: {observedLabel}
+                    {t('farm:dashboard.observedPrefix', 'Observed:')} {observedLabel}
                   </CustomText>
                 </View>
               </View>

@@ -9,8 +9,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const server = http.createServer(app);
-broker.attachServer(server);
+const apiServer = http.createServer(app);
+broker.attachServer(apiServer);
 
 app.post('/sensor/update', (req, res) => {
   const { sensor, value } = req.body;
@@ -51,7 +51,19 @@ app.get('/farm/history', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+
+let apiReady = false;
+let simulatorStarted = false;
+
+const maybeStartSimulator = () => {
+  if (simulatorStarted) return;
+  if (!apiReady) return;
+  simulatorStarted = true;
   Simulator.start();
+};
+
+apiServer.listen(PORT, () => {
+  apiReady = true;
+  console.log(`Simulation API & MQTT WebSocket broker running on port ${PORT}`);
+  maybeStartSimulator();
 });

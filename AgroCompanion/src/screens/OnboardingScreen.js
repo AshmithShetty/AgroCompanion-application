@@ -11,7 +11,7 @@ import { showAlert } from '../utils/alert';
 import { FarmSetupService } from '../services/FarmSetupService';
 
 export const OnboardingScreen = ({ navigation }) => {
-  const { t } = useTranslation(['common']);
+  const { t } = useTranslation(['common', 'errors']);
   const [isLoading, setIsLoading] = useState(false);
   const [username, setUsername] = useState('');
   const { height } = useWindowDimensions();
@@ -26,7 +26,7 @@ export const OnboardingScreen = ({ navigation }) => {
 
   const handleLogin = async () => {
     if (!username.trim()) {
-      showAlert('Error', 'Please enter a username');
+      showAlert(t('common:alerts.error', 'Error'), t('errors:auth.enterUsername', 'Please enter a username.'));
       return;
     }
     
@@ -36,7 +36,7 @@ export const OnboardingScreen = ({ navigation }) => {
       const users = await usersCollection.query(Q.where('username', username.trim())).fetch();
       
       if (users.length === 0) {
-        showAlert('Error', 'User not found. Please create a new account.');
+        showAlert(t('common:alerts.error', 'Error'), t('errors:auth.userNotFound', 'User not found. Please create a new account.'));
         setIsLoading(false);
         return;
       }
@@ -65,7 +65,7 @@ export const OnboardingScreen = ({ navigation }) => {
       }
     } catch (error) {
       console.error(error);
-      showAlert('Error', 'Failed to login');
+      showAlert(t('common:alerts.error', 'Error'), t('errors:auth.loginFailed', 'Failed to login.'));
     } finally {
       setIsLoading(false);
     }
@@ -73,7 +73,7 @@ export const OnboardingScreen = ({ navigation }) => {
 
   const handleNewAccount = async () => {
     if (!username.trim()) {
-      showAlert('Error', 'Please enter a username');
+      showAlert(t('common:alerts.error', 'Error'), t('errors:auth.enterUsername', 'Please enter a username.'));
       return;
     }
 
@@ -83,7 +83,7 @@ export const OnboardingScreen = ({ navigation }) => {
       const existingUsers = await usersCollection.query(Q.where('username', username.trim())).fetch();
       
       if (existingUsers.length > 0) {
-        showAlert('Error', 'Username already exists. Please login.');
+        showAlert(t('common:alerts.error', 'Error'), t('errors:auth.usernameExists', 'Username already exists. Please login.'));
         setIsLoading(false);
         return;
       }
@@ -99,7 +99,7 @@ export const OnboardingScreen = ({ navigation }) => {
       navigation.replace('FarmSetup');
     } catch (error) {
       console.error(error);
-      showAlert('Error', 'Failed to create account');
+      showAlert(t('common:alerts.error', 'Error'), t('errors:auth.createAccountFailed', 'Failed to create account.'));
     } finally {
       setIsLoading(false);
     }
@@ -118,22 +118,22 @@ export const OnboardingScreen = ({ navigation }) => {
               AgroCompanion
             </CustomText>
             <CustomText variant="body" style={styles.subtitle}>
-              Future of farming, powered by precision AI.
+              {t('common:onboarding.subtitle', 'Future of farming, powered by precision AI.')}
             </CustomText>
           </View>
 
           <View style={[styles.card, { padding: cardPadding }]}>
             <CustomText variant="h2" style={styles.cardTitle}>
-              Welcome Back
+              {t('common:onboarding.welcomeBackTitle', 'Welcome Back')}
             </CustomText>
             <CustomText variant="caption" style={styles.cardSubtitle}>
-              Enter your unique username to access your farm.
+              {t('common:onboarding.welcomeBackSubtitle', 'Enter your unique username to access your farm.')}
             </CustomText>
 
             <View style={styles.authContainer}>
               <InputField
-                label="Username"
-                placeholder="e.g. farmer_john"
+                label={t('common:onboarding.usernameLabel', 'Username')}
+                placeholder={t('common:onboarding.usernamePlaceholder', 'e.g. farmer_john')}
                 value={username}
                 onChangeText={setUsername}
               />
@@ -141,18 +141,18 @@ export const OnboardingScreen = ({ navigation }) => {
 
             <View style={styles.footer}>
               <Button
-                title="Login to Account"
+                title={t('common:onboarding.login', 'Login to Account')}
                 onPress={handleLogin}
                 disabled={isLoading}
                 style={styles.primaryBtn}
               />
               <View style={styles.divider}>
                 <View style={styles.line} />
-                <CustomText variant="caption" style={styles.orText}>OR</CustomText>
+                <CustomText variant="caption" style={styles.orText}>{t('common:onboarding.or', 'OR')}</CustomText>
                 <View style={styles.line} />
               </View>
               <Button
-                title="Create New Account"
+                title={t('common:onboarding.createAccount', 'Create New Account')}
                 variant="secondary"
                 onPress={handleNewAccount}
                 disabled={isLoading}

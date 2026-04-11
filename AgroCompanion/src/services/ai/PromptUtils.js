@@ -5,7 +5,7 @@ export const ContextBuilder = {
   buildFarmContext: () => {
     const { currentSession, currentFarm, currentUser } = useUserSessionStore.getState();
     const langCode = LanguageService.getCurrentLanguage() || 'en';
-    const languageMap = { en: 'English', hi: 'Hindi', kn: 'Kannada' };
+    const languageMap = { en: 'English', hi: 'Hindi', kn: 'Kannada', mr: 'Marathi' };
     const language = languageMap[langCode] || 'English';
     const crop = currentSession?.cropType || 'Unknown Crop';
     const method = currentSession?.farmingMethod || 'Conventional';
@@ -32,7 +32,7 @@ export const ContextBuilder = {
       - Soil Type: ${soil}
       - Method: ${method}
       - Farm Context: ${farmContext}
-      - Language: ${language} (You MUST reply completely in ${language}. DO NOT translate the parameters inside TASK[] brackets. Leave them in English strictly.)
+      - Language: ${language} (You MUST reply completely in ${language}. If you output JSON, do not translate JSON keys or action field names; keep them in English strictly.)
       - Actual Current Date: ${new Date().toISOString().split('T')[0]}
     `;
   }

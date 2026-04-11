@@ -1,99 +1,93 @@
-import * as sdk from 'microsoft-cognitiveservices-speech-sdk';
+import { Audio } from 'expo-av';
 import { ConfigService } from '../../utils/ConfigService';
 import { NetworkMonitor } from '../NetworkMonitor';
 import { LanguageService } from '../LanguageService';
 
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+const mimeFromUri = (uri) => {
+  const u = String(uri || '').toLowerCase();
+  if (u.endsWith('.m4a')) return 'audio/m4a';
+  if (u.endsWith('.mp3')) return 'audio/mpeg';
+  if (u.endsWith('.wav')) return 'audio/wav';
+  if (u.endsWith('.caf')) return 'audio/x-caf';
+  if (u.endsWith('.aac')) return 'audio/aac';
+  return 'application/octet-stream';
+};
+
 class VoiceServiceImpl {
   constructor() {
-    this.speechConfig = null;
+    this.recordMs = 4500;
   }
 
   init() {
-    const key = ConfigService.AZURE_SPEECH_KEY;
-    const region = ConfigService.AZURE_SPEECH_REGION;
-    if (key && region) {
-      this.speechConfig = sdk.SpeechConfig.fromSubscription(key, region);
-    }
+    // Placeholder for future voice initialization logic
   }
 
-  getLocale() {
+  async startSpeechToText() {
+    const isOnline = await NetworkMonitor.checkConnection();
+    if (!isOnline) {
+      return 'Offline: speech recognition requires an internet connection.';
+    }
+    if (!ConfigService.GROQ_API_KEY) {
+      throw new Error('GROQ_API_KEY_MISSING');
+    }
+
+    const perm = await Audio.requestPermissionsAsync();
+    if (!perm?.granted) {
+      throw new Error('MIC_PERMISSION_DENIED');
+    }
+
+    await Audio.setAudioModeAsync({
+      allowsRecordingIOS: true,
+      playsInSilentModeIOS: true
+    });
+
+    const recording = new Audio.Recording();
+    await recording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+    await recording.startAsync();
+    await sleep(this.recordMs);
+    await recording.stopAndUnloadAsync();
+
+    const uri = recording.getURI();
+    if (!uri) {
+      throw new Error('RECORDING_URI_MISSING');
+    }
+
+    const form = new FormData();
+    form.append('file', {
+      uri,
+      name: 'speech.m4a',
+      type: mimeFromUri(uri)
+    });
+    form.append('model', 'whisper-large-v3-turbo');
+
     const lang = LanguageService.getCurrentLanguage();
-    if (lang === 'hi') return 'hi-IN';
-    if (lang === 'kn') return 'kn-IN';
-    return 'en-US';
-  }
-
-  async startSpeechToText(audioConfig) {
-    const isOnline = await NetworkMonitor.checkConnection();
-    if (!isOnline) {
-      return this.startLocalSpeechToText(audioConfig);
+    if (lang) {
+      form.append('language', lang);
     }
 
-    return new Promise((resolve, reject) => {
-      if (!this.speechConfig) {
-        reject(new Error('Azure_Speech_Config_Missing'));
-        return;
-      }
-
-      const autoDetectSourceLanguageConfig = sdk.AutoDetectSourceLanguageConfig.fromLanguages(['en-US', 'hi-IN', 'kn-IN']);
-      const recognizer = sdk.SpeechRecognizer.FromConfig(this.speechConfig, autoDetectSourceLanguageConfig, audioConfig);
-
-      recognizer.recognizeOnceAsync(
-        result => {
-          if (result.reason === sdk.ResultReason.RecognizedSpeech) {
-            resolve(result.text);
-          } else {
-            reject(new Error('Speech_Recognition_Failed'));
-          }
-          recognizer.close();
-        },
-        error => {
-          reject(error);
-          recognizer.close();
-        }
-      );
+    const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${ConfigService.GROQ_API_KEY}`
+      },
+      body: form
     });
-  }
 
-  async startLocalSpeechToText(audioConfig) {
-    return "LOCAL_STT_READY_MODEL_NOT_DOWNLOADED";
-  }
-
-  async textToSpeech(text) {
-    const isOnline = await NetworkMonitor.checkConnection();
-    if (!isOnline) {
-      return this.localTextToSpeech(text);
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(json?.error?.message || json?.error || `STT_FAILED_${response.status}`);
     }
-
-    return new Promise((resolve, reject) => {
-      if (!this.speechConfig) {
-        reject(new Error('Azure_Speech_Config_Missing'));
-        return;
-      }
-
-      this.speechConfig.speechSynthesisLanguage = this.getLocale();
-      const synthesizer = new sdk.SpeechSynthesizer(this.speechConfig);
-
-      synthesizer.speakTextAsync(
-        text,
-        result => {
-          if (result.reason === sdk.ResultReason.SynthesizingAudioCompleted) {
-            resolve(result.audioData);
-          } else {
-            reject(new Error('Speech_Synthesis_Failed'));
-          }
-          synthesizer.close();
-        },
-        error => {
-          reject(error);
-          synthesizer.close();
-        }
-      );
-    });
+    const text = json?.text;
+    if (typeof text !== 'string' || !text.trim()) {
+      throw new Error('STT_EMPTY_TEXT');
+    }
+    return text.trim();
   }
 
-  async localTextToSpeech(text) {
-    return "LOCAL_TTS_READY_MODEL_NOT_DOWNLOADED";
+  async textToSpeech() {
+    throw new Error('TTS_NOT_IMPLEMENTED');
   }
 }
 

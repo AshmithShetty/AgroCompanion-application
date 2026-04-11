@@ -80,12 +80,21 @@ export const SessionCreateScreen = ({ navigation }) => {
       setCurrentSession(newSession);
 
       setLoadingStatus('Generating task schedule...');
-      await ScheduleAgent.generateMasterSchedule({
+      const tasksCreated = await ScheduleAgent.generateMasterSchedule({
         cropType,
         soilType,
         farmingMethod,
         startDate: new Date(startDateStr).getTime(),
       }, `${currentFarm.farmContext || ''}\n${envContext}`);
+
+      if (!tasksCreated) {
+        await database.write(async () => {
+          await newSession.destroyPermanently();
+        });
+        setCurrentSession(null);
+        showAlert('AI Network Error', 'Failed to generate initial AI task schedule. The session was not saved. Please check your connection and try again.');
+        return;
+      }
 
       navigation.navigate('Main');
     } catch (error) {

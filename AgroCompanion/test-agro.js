@@ -1,7 +1,7 @@
 const fetch = require('node-fetch');
 
 const API_BASE = 'https://api.agromonitoring.com/agro/1.0';
-const apiKey = 'afe36dfacd68971d26ecda6aa36f6a8c';
+const apiKey = process.env.AGROMONITORING_API_KEY || process.env.EXPO_PUBLIC_AGROMONITORING_API_KEY || '';
 
 const payload = {
   name: "Test Polygon",
@@ -24,6 +24,10 @@ const payload = {
 };
 
 async function test() {
+  if (!apiKey) {
+    console.error('Missing AGROMONITORING_API_KEY (or EXPO_PUBLIC_AGROMONITORING_API_KEY).');
+    process.exit(1);
+  }
   console.log("Sending...");
   const URL = `${API_BASE}/polygons?appid=${apiKey}&duplicated=true`;
   const response = await fetch(URL, {

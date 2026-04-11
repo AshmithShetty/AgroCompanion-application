@@ -2,7 +2,22 @@
   "dashboard": {
     "title": "Farm Dashboard",
     "totalArea": "Total Area",
-    "activeCrops": "Active Crops"
+    "activeCrops": "Active Crops",
+    "weather": "Weather",
+    "upcomingTasks": "Upcoming Tasks",
+    "activeFields": "Active Fields",
+    "moisture": "Moisture",
+    "temperature": "Temperature",
+    "humidity": "Humidity",
+    "feelsLike": "Feels Like",
+    "farmFallback": "Farm",
+    "ndviTitle": "Vegetation Health (NDVI)",
+    "ndviScoreLabel": "NDVI score",
+    "vegHealthConfidenceSuffix": "vegetation health confidence",
+    "healthScore": "Health Score",
+    "observedPrefix": "Observed:"
+    ,
+    "nodeStatus": "Node Status"
   },
   "fields": {
     "title": "Fields",

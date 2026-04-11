@@ -4,6 +4,8 @@ import { EventBusService } from './EventBusService';
 import { EVENT_TOPICS } from '../utils/EventRegistry';
 import { useUserSessionStore } from '../store';
 
+let resolveOverduePromise = null;
+
 const normalizeDateKey = (value) => {
   if (!value || typeof value !== 'string') {
     return null;
@@ -18,6 +20,28 @@ const getTodayDateKey = () => {
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+};
+
+const addDays = (dateKey, days) => {
+  const parts = String(dateKey || '').split('-').map(n => Number(n));
+  if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) {
+    return null;
+  }
+  const [y, m, d] = parts;
+  const dt = new Date(y, m - 1, d);
+  if (Number.isNaN(dt.getTime())) return null;
+  dt.setDate(dt.getDate() + Number(days || 0));
+  const yy = dt.getFullYear();
+  const mm = String(dt.getMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getDate()).padStart(2, '0');
+  return `${yy}-${mm}-${dd}`;
+};
+
+const isAllowedPriority = (value) => {
+  const s = (value || '').toString().trim();
+  if (!s) return false;
+  const allowed = ['High', 'Medium', 'Low', 'paused'];
+  return allowed.some(p => p.toLowerCase() === s.toLowerCase());
 };
 
 const taskMatchesScope = (task, scope) => {
@@ -74,53 +98,90 @@ const buildScopeQueries = ({ userId, farmId, sessionId }) => {
 
 export const TaskRepository = {
   createTask: async (title, date, priority, type = 'general', source = null, description = '', scope = {}) => {
+    const resolvedScope = resolveScope(scope);
+    const titleText = (title || '').toString().trim();
+    const dateKey = normalizeDateKey(date);
+    const priorityText = (priority || '').toString().trim();
+    const descText = (description || '').toString();
+
+    if (!titleText) {
+      return { ok: false, reason: 'invalid_title' };
+    }
+
+    if (!dateKey) {
+      return { ok: false, reason: 'invalid_date' };
+    }
+
+    const horizonDays = 365;
+    const todayKey = getTodayDateKey();
+    const horizonKey = addDays(todayKey, horizonDays);
+    if (horizonKey && dateKey > horizonKey) {
+      return { ok: false, reason: 'date_outside_horizon' };
+    }
+
+    if (!isAllowedPriority(priorityText)) {
+      return { ok: false, reason: 'invalid_priority' };
+    }
+
     let newTask;
     const tasksCollection = database.get('tasks');
-    const resolvedScope = resolveScope(scope);
     await database.write(async () => {
       newTask = await tasksCollection.create(task => {
         task.userId = resolvedScope.userId || '';
         task.farmId = resolvedScope.farmId || '';
         task.sessionId = resolvedScope.sessionId || '';
-        task.title = title;
-        task.date = date;
-        task.priority = priority;
+        task.title = titleText;
+        task.date = dateKey;
+        task.priority = priorityText;
         task.status = 'pending';
         task.source = source;
-        task.description = description;
+        task.description = descText;
       });
     });
     EventBusService.publish(EVENT_TOPICS.TASK_CREATED, newTask);
+    return { ok: true, task: newTask };
   },
 
   autoResolveOverdueTasks: async (scope = {}) => {
-    const tasksCollection = database.get('tasks');
-    const resolvedScope = resolveScope(scope);
-    const todayKey = getTodayDateKey();
-    const pending = await tasksCollection.query(
-      ...buildScopeQueries(resolvedScope),
-      Q.where('status', 'pending')
-    ).fetch();
-
-    const overdue = pending.filter(task => {
-      const taskDateKey = normalizeDateKey(task.date);
-      return taskDateKey ? taskDateKey < todayKey : false;
-    });
-
-    if (overdue.length === 0) {
-      return 0;
+    if (resolveOverduePromise) {
+      return resolveOverduePromise;
     }
 
-    await database.write(async () => {
-      for (const task of overdue) {
-        await task.update(record => {
-          record.status = 'resolved';
-        });
-      }
-    });
+    resolveOverduePromise = (async () => {
+      try {
+        const tasksCollection = database.get('tasks');
+        const resolvedScope = resolveScope(scope);
+        const todayKey = getTodayDateKey();
+        const pending = await tasksCollection.query(
+          ...buildScopeQueries(resolvedScope),
+          Q.where('status', 'pending')
+        ).fetch();
 
-    EventBusService.publish(EVENT_TOPICS.TASK_RESOLVED, { reason: 'auto_resolve', count: overdue.length });
-    return overdue.length;
+        const overdue = pending.filter(task => {
+          const taskDateKey = normalizeDateKey(task.date);
+          return taskDateKey ? taskDateKey < todayKey : false;
+        });
+
+        if (overdue.length === 0) {
+          return 0;
+        }
+
+        await database.write(async () => {
+          for (const task of overdue) {
+            await task.update(record => {
+              record.status = 'resolved';
+            });
+          }
+        });
+
+        EventBusService.publish(EVENT_TOPICS.TASK_RESOLVED, { reason: 'auto_resolve', count: overdue.length });
+        return overdue.length;
+      } finally {
+        resolveOverduePromise = null;
+      }
+    })();
+
+    return resolveOverduePromise;
   },
 
   getAllTasks: async (scope = {}) => {

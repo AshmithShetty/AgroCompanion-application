@@ -5,5 +5,31 @@
   },
   "general": {
     "somethingWentWrong": "कुछ गलत हो गया।"
+  },
+  "auth": {
+    "enterUsername": "कृपया उपयोगकर्ता नाम दर्ज करें।",
+    "userNotFound": "उपयोगकर्ता नहीं मिला। कृपया नया खाता बनाएँ।",
+    "loginFailed": "लॉगिन विफल रहा।",
+    "usernameExists": "यह उपयोगकर्ता नाम पहले से मौजूद है। कृपया लॉगिन करें।",
+    "createAccountFailed": "खाता बनाना विफल रहा।"
+  },
+  "ai": {
+    "offline": "AI is unavailable while offline. Please connect to the internet.",
+    "notConfigured": "AI is not configured. Please set EXPO_PUBLIC_GROQ_API_KEY and enable AI in the .env file.",
+    "serviceError": "AI service error ({{status}}): {{message}}",
+    "emptyResponse": "Received an empty response from the AI service.",
+    "requestFailed": "AI request failed: {{message}}",
+    "missing_soil": "I can help, but I need your current soil moisture and soil test readings (pH, N, P, K) before giving timing-sensitive advice.",
+    "missing_forecast": "I can help, but I need a 5-day forecast to give timing-sensitive advice.",
+    "blocked_illegal": "I can’t help with illegal or weaponizable instructions.",
+    "blocked_medical": "I can’t provide medical or veterinary treatment guidance. Please consult a qualified professional.",
+    "blocked_brands": "I can’t provide brand or trade-name recommendations.",
+    "blocked_generic": "I can’t help with that request.",
+    "escalate_label_required": "I can’t provide chemical mixing or dosage instructions without exact label details.",
+    "escalate_chemical_selection": "I can’t select or recommend specific pesticide/chemical products. Please consult local extension and follow the label.",
+    "action_parse_failed": "I couldn’t safely interpret the AI output. Please try again.",
+    "action_validation_failed": "I couldn’t safely validate the requested actions. Please try again.",
+    "workflow_fallback": "Here are safe next steps based on your farm context.",
+    "action_count_invalid": "The schedule could not be generated safely. Please try again."
   }
 }

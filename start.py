@@ -22,6 +22,15 @@ def run_process(name, command, cwd):
         creationflags=creationflags,
     )
 
+def require_node_deps(name, cwd):
+    node_modules = cwd / "node_modules"
+    if node_modules.exists():
+        return True
+    print(f"{name} is missing node_modules. Run:", file=sys.stderr)
+    print(f"  cd {cwd}", file=sys.stderr)
+    print("  npm install", file=sys.stderr)
+    return False
+
 
 def taskkill(pid):
     subprocess.run(
@@ -35,9 +44,19 @@ def taskkill(pid):
 def main():
     processes = []
     try:
-        processes.append(("AgroCompanion", run_process("AgroCompanion", "npx expo start -c", ROOT / "AgroCompanion")))
+        js_ok = True
+        js_ok = require_node_deps("AgroCompanion", ROOT / "AgroCompanion") and js_ok
+        js_ok = require_node_deps("simulation-server", ROOT / "simulation-server") and js_ok
+        js_ok = require_node_deps("demo-controller", ROOT / "demo-controller") and js_ok
+        if not js_ok:
+            return 1
+
+        # Force clean cache to prevent stale environment variables (like MQTT host changes)
+        expo_cmd = "npx expo start -c"
+
+        processes.append(("AgroCompanion", run_process("AgroCompanion", expo_cmd, ROOT / "AgroCompanion")))
         processes.append(("simulation-server", run_process("simulation-server", "node server.js", ROOT / "simulation-server")))
-        processes.append(("demo-controller", run_process("demo-controller", "npm run dev", ROOT / "demo-controller")))
+        processes.append(("demo-controller", run_process("demo-controller", "npm run --silent dev", ROOT / "demo-controller")))
     except Exception as e:
         for _, p in processes:
             try:
@@ -79,4 +98,3 @@ def main():
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

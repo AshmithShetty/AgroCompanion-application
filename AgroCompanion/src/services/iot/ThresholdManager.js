@@ -34,7 +34,7 @@ let activeThresholds = {
 };
 
 const lastAlertTime = {};
-const ALERT_COOLDOWN_MS = 60000;
+const ALERT_COOLDOWN_MS = 600000;
 
 export const ThresholdManager = {
   init: () => {

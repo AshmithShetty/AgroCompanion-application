@@ -2,67 +2,95 @@ import { ConfigService } from '../../utils/ConfigService';
 import { LanguageService } from '../LanguageService';
 import { AICacheService } from './AICacheService';
 import { NetworkMonitor } from '../NetworkMonitor';
+import i18n from 'i18next';
+
+const GROQ_CHAT_URL = 'https://api.groq.com/openai/v1/chat/completions';
+
+const normalizeBase64Image = (base64) => {
+  if (typeof base64 !== 'string') return null;
+  const trimmed = base64.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith('data:image/')) return trimmed;
+  return `data:image/jpeg;base64,${trimmed}`;
+};
 
 class AIServiceImpl {
   constructor() {
-    this.endpoint = ConfigService.AZURE_OPENAI_ENDPOINT;
-    this.apiKey = ConfigService.AZURE_OPENAI_KEY;
   }
 
-  async generateResponse(systemPrompt, userPrompt, base64Image = null) {
+  async generateResponse(systemPrompt, userPrompt, base64Image = null, options = {}) {
     const isOnline = await NetworkMonitor.checkConnection();
     const currentLang = LanguageService.getCurrentLanguage();
+    const expectJsonEnvelope = Boolean(options?.expectJsonEnvelope);
+    const noCache = Boolean(options?.noCache);
 
     const languageInstruction = `You must reply in the language with ISO 639-1 code: ${currentLang}.`;
     const finalSystemPrompt = `${systemPrompt}\n${languageInstruction}`;
 
-    const cached = await AICacheService.getCachedResponse(finalSystemPrompt, userPrompt);
-    if (cached) {
-      return cached;
+    if (!noCache) {
+      const cached = await AICacheService.getCachedResponse(finalSystemPrompt, userPrompt);
+      if (cached) {
+        return cached;
+      }
     }
 
     if (!isOnline) {
-      return 'You are currently offline. Please connect to the internet to use the AI assistant.';
+      const msg = i18n.t('errors:ai.offline');
+      return expectJsonEnvelope ? JSON.stringify({ message: msg, actions: [] }) : msg;
     }
 
-    if (!this.apiKey || !this.endpoint) {
-      return 'AI service is not configured. Please add your Azure OpenAI key and endpoint to the .env file.';
+    if (!ConfigService.ENABLE_AI || !ConfigService.GROQ_API_KEY) {
+      const msg = i18n.t('errors:ai.notConfigured');
+      return expectJsonEnvelope ? JSON.stringify({ message: msg, actions: [] }) : msg;
     }
 
     try {
-      const cleanEndpoint = this.endpoint.replace(/\/$/, '');
-      const deploymentName = ConfigService.AZURE_OPENAI_DEPLOYMENT_NAME;
-      const apiVersion = ConfigService.AZURE_OPENAI_API_VERSION;
       const hasImage = typeof base64Image === 'string' && base64Image.trim().length > 0;
-      const response = await fetch(`${cleanEndpoint}/openai/deployments/${deploymentName}/chat/completions?api-version=${apiVersion}`, {
+      const model = hasImage ? ConfigService.GROQ_VISION_MODEL : ConfigService.GROQ_TEXT_MODEL;
+      const messages = hasImage
+        ? [
+          { role: 'system', content: finalSystemPrompt },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: userPrompt },
+              { type: 'image_url', image_url: { url: normalizeBase64Image(base64Image) } }
+            ]
+          }
+        ]
+        : [
+          { role: 'system', content: finalSystemPrompt },
+          { role: 'user', content: userPrompt }
+        ];
+
+      const response = await fetch(GROQ_CHAT_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'api-key': this.apiKey,
+          Authorization: `Bearer ${ConfigService.GROQ_API_KEY}`,
         },
         body: JSON.stringify({
-          messages: [
-            { role: 'system', content: finalSystemPrompt },
-            { role: 'user', content: hasImage ? [
-                { type: 'text', text: userPrompt },
-                { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64Image}` } }
-              ] : userPrompt },
-          ],
+          model,
+          messages,
           temperature: 0.4,
-          max_tokens: 800,
+          max_completion_tokens: 3000,
+          stream: false
         }),
       });
 
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
-        return `AI service error (${response.status}): ${err?.error?.message || response.statusText}`;
+        const detail = err?.error?.message || err?.error || err?.message || response.statusText || '';
+        const msg = i18n.t('errors:ai.serviceError', { status: response.status, message: detail });
+        return expectJsonEnvelope ? JSON.stringify({ message: msg, actions: [] }) : msg;
       }
 
       const data = await response.json();
-      const aiText = data.choices?.[0]?.message?.content;
+      const aiText = data?.choices?.[0]?.message?.content;
 
       if (!aiText) {
-        return 'Received an empty response from the AI service.';
+        const msg = i18n.t('errors:ai.emptyResponse');
+        return expectJsonEnvelope ? JSON.stringify({ message: msg, actions: [] }) : msg;
       }
 
       console.log('AI Response:', aiText);
@@ -71,7 +99,8 @@ class AIServiceImpl {
       return aiText;
     } catch (error) {
       console.error('AIService error:', error);
-      return `AI request failed: ${error.message}`;
+      const msg = i18n.t('errors:ai.requestFailed', { message: error.message || '' });
+      return expectJsonEnvelope ? JSON.stringify({ message: msg, actions: [] }) : msg;
     }
   }
 }

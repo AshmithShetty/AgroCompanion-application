@@ -1,4 +1,7 @@
 {
+  "app": {
+    "loading": "Loading..."
+  },
   "module": {
     "screen": {
       "element": {
@@ -9,5 +12,44 @@
         "language": "Language"
       }
     }
+  },
+  "alerts": {
+    "error": "Error",
+    "permissionRequired": "Permission Required"
+  },
+  "status": {
+    "connecting": "Connecting",
+    "online": "Online",
+    "offline": "Offline"
+  },
+  "onboarding": {
+    "subtitle": "Future of farming, powered by precision AI.",
+    "welcomeBackTitle": "Welcome Back",
+    "welcomeBackSubtitle": "Enter your unique username to access your farm.",
+    "usernameLabel": "Username",
+    "usernamePlaceholder": "e.g. farmer_john",
+    "login": "Login to Account",
+    "createAccount": "Create New Account",
+    "or": "OR"
+  },
+  "profile": {
+    "title": "Profile & Settings",
+    "accountDetails": "Account Details",
+    "usernamePrefix": "Username:",
+    "activeFarmPrefix": "Active Farm:",
+    "activeCropSession": "Active Crop Session",
+    "cropPrefix": "Crop:",
+    "methodPrefix": "Method:",
+    "startedPrefix": "Started:",
+    "switchSession": "Switch Farm Session",
+    "logout": "Logout"
+  },
+  "assistant": {
+    "languageLabel": "Language",
+    "languagePlaceholder": "Select language",
+    "aiReachError": "Something went wrong reaching the AI. Please try again.",
+    "imageAnalysisFailed": "Image analysis failed. Please try again.",
+    "microphoneError": "Microphone error or speech not recognized.",
+    "allowPhotoLibrary": "Please allow access to your photo library."
   }
 }

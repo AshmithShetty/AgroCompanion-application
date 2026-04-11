@@ -12,7 +12,7 @@ export const TaskCard = ({ title, description, date, priority }) => {
   return (
     <Card style={styles.container}>
       <View style={styles.header}>
-        <CustomText variant="subheading" style={{ flex: 1, marginRight: 8 }}>{title}</CustomText>
+        <CustomText variant="subheading" style={{ flex: 1, marginRight: 8 }} dynamic>{title}</CustomText>
         <Badge label={priority} status={priorityStatus} />
       </View>
       <Spacer size="sm" />
@@ -20,7 +20,7 @@ export const TaskCard = ({ title, description, date, priority }) => {
       {description ? (
         <>
           <Spacer size="sm" />
-          <CustomText variant="body">{description}</CustomText>
+          <CustomText variant="body" dynamic>{description}</CustomText>
         </>
       ) : null}
     </Card>

@@ -1,7 +1,9 @@
 {
   "chat": {
     "title": "AI Assistant",
+    "greeting": "Welcome! I am your active AI Agronomist. How can I assist with your {{cropType}} today?",
     "placeholder": "Ask me about your farm...",
+    "imageUploaded": "[Image Uploaded]",
     "voicePrompt": "Listening..."
   }
 }

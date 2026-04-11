@@ -33,25 +33,25 @@ export const ProfileScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <Header title={t('common:module.screen.element.settings', 'Profile & Settings')} />
+      <Header title={t('common:profile.title', 'Profile & Settings')} />
       <ScrollView style={styles.content}>
 
         <View style={styles.section}>
-          <CustomText variant="h2" style={styles.sectionTitle}>Account Details</CustomText>
-          <CustomText variant="body">Username: {currentUser?.username || 'Guest'}</CustomText>
+          <CustomText variant="h2" style={styles.sectionTitle}>{t('common:profile.accountDetails', 'Account Details')}</CustomText>
+          <CustomText variant="body">{t('common:profile.usernamePrefix', 'Username:')} {currentUser?.username || 'Guest'}</CustomText>
           {currentFarm && (
-            <CustomText variant="body">Active Farm: {currentFarm.name}</CustomText>
+            <CustomText variant="body">{t('common:profile.activeFarmPrefix', 'Active Farm:')} {currentFarm.name}</CustomText>
           )}
         </View>
 
         {currentSession && (
           <View style={styles.section}>
-            <CustomText variant="h2" style={styles.sectionTitle}>Active Crop Session</CustomText>
-            <CustomText variant="body">Crop: {currentSession.cropType}</CustomText>
-            <CustomText variant="body">Method: {currentSession.farmingMethod || 'N/A'}</CustomText>
-            <CustomText variant="body">Started: {new Date(currentSession.startDate).toLocaleDateString()}</CustomText>
+            <CustomText variant="h2" style={styles.sectionTitle}>{t('common:profile.activeCropSession', 'Active Crop Session')}</CustomText>
+            <CustomText variant="body">{t('common:profile.cropPrefix', 'Crop:')} {currentSession.cropType}</CustomText>
+            <CustomText variant="body">{t('common:profile.methodPrefix', 'Method:')} {currentSession.farmingMethod || 'N/A'}</CustomText>
+            <CustomText variant="body">{t('common:profile.startedPrefix', 'Started:')} {new Date(currentSession.startDate).toLocaleDateString()}</CustomText>
             <Button 
-              title="Switch Farm Session" 
+              title={t('common:profile.switchSession', 'Switch Farm Session')} 
               variant="secondary" 
               onPress={handleSwitchSession} 
               style={{marginTop: 16}} 
@@ -72,7 +72,7 @@ export const ProfileScreen = ({ navigation }) => {
 
         <View style={[styles.section, { backgroundColor: 'transparent' }]}>
           <Button 
-            title="Logout" 
+            title={t('common:profile.logout', 'Logout')} 
             onPress={handleLogout} 
             style={styles.logoutBtn}
           />

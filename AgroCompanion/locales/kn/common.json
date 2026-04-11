@@ -1,4 +1,7 @@
 {
+  "app": {
+    "loading": "ಲೋಡ್ ಆಗುತ್ತಿದೆ..."
+  },
   "module": {
     "screen": {
       "element": {
@@ -9,5 +12,44 @@
         "language": "ಭಾಷೆ"
       }
     }
+  },
+  "alerts": {
+    "error": "ದೋಷ",
+    "permissionRequired": "ಅನುಮತಿ ಅಗತ್ಯ"
+  },
+  "status": {
+    "connecting": "ಸಂಪರ್ಕಿಸಲಾಗುತ್ತಿದೆ",
+    "online": "ಆನ್‌ಲೈನ್",
+    "offline": "ಆಫ್‌ಲೈನ್"
+  },
+  "onboarding": {
+    "subtitle": "ನಿಖರ ಎಐಯಿಂದ ಚಾಲಿತವಾಗಿರುವ ಕೃಷಿಯ ಭವಿಷ್ಯ.",
+    "welcomeBackTitle": "ಮತ್ತೆ ಸ್ವಾಗತ",
+    "welcomeBackSubtitle": "ನಿಮ್ಮ ತೋಟವನ್ನು ಪ್ರವೇಶಿಸಲು ನಿಮ್ಮ ಅನನ್ಯ ಬಳಕೆದಾರ ಹೆಸರನ್ನು ನಮೂದಿಸಿ.",
+    "usernameLabel": "ಬಳಕೆದಾರ ಹೆಸರು",
+    "usernamePlaceholder": "ಉದಾ. farmer_john",
+    "login": "ಖಾತೆಗೆ ಲಾಗಿನ್ ಮಾಡಿ",
+    "createAccount": "ಹೊಸ ಖಾತೆ ಸೃಷ್ಟಿಸಿ",
+    "or": "ಅಥವಾ"
+  },
+  "profile": {
+    "title": "ಪ್ರೊಫೈಲ್ ಮತ್ತು ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
+    "accountDetails": "ಖಾತೆ ವಿವರಗಳು",
+    "usernamePrefix": "ಬಳಕೆದಾರ ಹೆಸರು:",
+    "activeFarmPrefix": "ಸಕ್ರಿಯ ತೋಟ:",
+    "activeCropSession": "ಸಕ್ರಿಯ ಬೆಳೆ ಸೆಷನ್",
+    "cropPrefix": "ಬೆಳೆ:",
+    "methodPrefix": "ವಿಧಾನ:",
+    "startedPrefix": "ಆರಂಭಿಸಿದ ದಿನ:",
+    "switchSession": "ತೋಟ ಸೆಷನ್ ಬದಲಿಸಿ",
+    "logout": "ಲಾಗ್ ಔಟ್"
+  },
+  "assistant": {
+    "languageLabel": "ಭಾಷೆ",
+    "languagePlaceholder": "ಭಾಷೆ ಆಯ್ಕೆಮಾಡಿ",
+    "aiReachError": "ಎಐ ಸಂಪರ್ಕಿಸಲು ಸಮಸ್ಯೆ ಉಂಟಾಯಿತು. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
+    "imageAnalysisFailed": "ಚಿತ್ರ ವಿಶ್ಲೇಷಣೆ ವಿಫಲವಾಗಿದೆ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
+    "microphoneError": "ಮೈಕ್ರೊಫೋನ್ ದೋಷ ಅಥವಾ ಮಾತು ಗುರುತಿಸಲಾಗಲಿಲ್ಲ.",
+    "allowPhotoLibrary": "ದಯವಿಟ್ಟು ನಿಮ್ಮ ಫೋಟೋ ಲೈಬ್ರರಿಗೂ ಪ್ರವೇಶ ಅನುಮತಿಸಿ."
   }
 }

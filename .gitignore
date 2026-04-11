@@ -28,6 +28,8 @@ simulation-server/data_log.json
 
 __pycache__/
 *.py[cod]
+tmp/
+.npm-cache/
 
 .vscode/
 .idea/

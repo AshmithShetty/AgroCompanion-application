@@ -2,7 +2,22 @@
   "dashboard": {
     "title": "ಕೃಷಿ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್",
     "totalArea": "ಒಟ್ಟು ವಿಸ್ತೀರ್ಣ",
-    "activeCrops": "ಸಕ್ರಿಯ ಬೆಳೆಗಳು"
+    "activeCrops": "ಸಕ್ರಿಯ ಬೆಳೆಗಳು",
+    "weather": "ಹವಾಮಾನ",
+    "upcomingTasks": "ಮುಂಬರುವ ಕಾರ್ಯಗಳು",
+    "activeFields": "ಸಕ್ರಿಯ ಕ್ಷೇತ್ರಗಳು",
+    "moisture": "ತೇವಾಂಶ",
+    "temperature": "ತಾಪಮಾನ",
+    "humidity": "ಆರ್ದ್ರತೆ",
+    "feelsLike": "ಅನಿಸುತ್ತದೆ",
+    "farmFallback": "ತೋಟ",
+    "ndviTitle": "ಸಸ್ಯ ಆರೋಗ್ಯ (NDVI)",
+    "ndviScoreLabel": "NDVI ಅಂಕ",
+    "vegHealthConfidenceSuffix": "ಸಸ್ಯ ಆರೋಗ್ಯ ವಿಶ್ವಾಸ",
+    "healthScore": "ಆರೋಗ್ಯ ಅಂಕ",
+    "observedPrefix": "ಪರಿಶೀಲಿಸಿದ ದಿನ:"
+    ,
+    "nodeStatus": "ನೋಡ್ ಸ್ಥಿತಿ"
   },
   "fields": {
     "title": "ಕ್ಷೇತ್ರಗಳು",

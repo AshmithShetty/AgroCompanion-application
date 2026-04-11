@@ -1,13 +1,15 @@
 * { box-sizing: border-box; font-family: sans-serif; }
 body { margin: 0; background: #f4f4f9; color: #333; }
 .container { padding: 20px; max-width: 1400px; margin: 0 auto; }
-.header { background: #2E7D32; color: white; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; }
+.header { background: #2E7D32; color: white; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; }
 .header h1 { margin: 0; font-size: 24px; }
+.mqtt-badge { font-size: 12px; font-weight: bold; padding: 4px 10px; border-radius: 12px; color: #000; text-transform: uppercase; letter-spacing: 0.5px; }
 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
 .panel h2 { margin-top: 0; font-size: 18px; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
 .state-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.state-card { background: #f9f9f9; padding: 15px; border-radius: 6px; text-align: center; border: 1px solid #e0e0e0; }
+.state-card { background: #f9f9f9; padding: 15px; border-radius: 6px; text-align: center; border: 1px solid #e0e0e0; transition: background 0.3s; }
+.state-card:hover { background: #e8f5e9; }
 .state-label { display: block; font-size: 11px; color: #666; text-transform: uppercase; margin-bottom: 5px; }
 .state-value { font-size: 18px; font-weight: bold; color: #2E7D32; }
 .controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
@@ -15,8 +17,9 @@ button { background: #2E7D32; color: white; border: none; padding: 10px 15px; bo
 button:hover { background: #1B5E20; }
 .slider-container { display: flex; flex-direction: column; gap: 15px; }
 .slider-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding-top: 15px; border-top: 1px solid #eee; }
-.slider-group label { display: block; font-size: 12px; margin-bottom: 5px; font-weight: bold; color: #555; }
-.slider-group input { width: 100%; display: inline-block; vertical-align: middle; }
+.slider-group label { display: block; font-size: 12px; margin-bottom: 4px; font-weight: bold; color: #555; }
+.slider-group input[type=range] { width: 100%; display: block; }
+.slider-val { display: block; font-size: 11px; color: #2E7D32; font-weight: bold; margin-top: 2px; text-align: right; }
 .speed-group { background: #e8f5e9; padding: 10px; border-radius: 6px; border: 1px solid #c8e6c9; }
 .speed-group label { color: #2E7D32; font-size: 14px; }
 .speed-control { display: flex; align-items: center; }

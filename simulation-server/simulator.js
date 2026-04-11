@@ -70,14 +70,11 @@ const startLoop = () => {
 
 const Simulator = {
   start: () => {
-    // Dynamically grab the port Render assigns, or fallback to 3000 locally
-    const port = process.env.PORT || 3000;
-    
-    // Connect locally within the Render container using 127.0.0.1
-    client = mqtt.connect(`ws://127.0.0.1:${port}`);
+    const mqttPort = process.env.PORT || 3000;
+    client = mqtt.connect(`ws://127.0.0.1:${mqttPort}`);
     
     client.on('connect', () => {
-      console.log(`Simulator successfully connected to internal broker on port ${port}`);
+      console.log(`Simulator successfully connected to internal broker on port ${mqttPort}`);
       publishState();
       startLoop();
     });

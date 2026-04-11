@@ -2,7 +2,22 @@
   "dashboard": {
     "title": "खेत डैशबोर्ड",
     "totalArea": "कुल क्षेत्रफल",
-    "activeCrops": "सक्रिय फसलें"
+    "activeCrops": "सक्रिय फसलें",
+    "weather": "मौसम",
+    "upcomingTasks": "आगामी कार्य",
+    "activeFields": "सक्रिय खेत",
+    "moisture": "नमी",
+    "temperature": "तापमान",
+    "humidity": "आर्द्रता",
+    "feelsLike": "महसूस होता है",
+    "farmFallback": "खेत",
+    "ndviTitle": "वनस्पति स्वास्थ्य (NDVI)",
+    "ndviScoreLabel": "NDVI स्कोर",
+    "vegHealthConfidenceSuffix": "वनस्पति स्वास्थ्य विश्वास",
+    "healthScore": "स्वास्थ्य स्कोर",
+    "observedPrefix": "देखा गया:"
+    ,
+    "nodeStatus": "नोड स्थिति"
   },
   "fields": {
     "title": "खेत",
