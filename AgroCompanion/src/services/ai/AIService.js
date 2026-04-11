@@ -47,9 +47,18 @@ class AIServiceImpl {
     try {
       const hasImage = typeof base64Image === 'string' && base64Image.trim().length > 0;
       const model = hasImage ? ConfigService.GROQ_VISION_MODEL : ConfigService.GROQ_TEXT_MODEL;
+      const chatHistoryObj = Array.isArray(options?.chatLog) ? options.chatLog : [];
+      let historyMessages = chatHistoryObj.slice(-8)
+        .filter(m => m.text !== userPrompt) // Avoid duplicate last prompt
+        .map(m => ({
+          role: m.role === 'ai' ? 'assistant' : 'user',
+          content: m.text
+        }));
+
       const messages = hasImage
         ? [
           { role: 'system', content: finalSystemPrompt },
+          ...historyMessages,
           {
             role: 'user',
             content: [
@@ -60,6 +69,7 @@ class AIServiceImpl {
         ]
         : [
           { role: 'system', content: finalSystemPrompt },
+          ...historyMessages,
           { role: 'user', content: userPrompt }
         ];
 

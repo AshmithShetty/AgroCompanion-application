@@ -163,7 +163,7 @@ const getSensorSnapshot = async () => {
   return snapshot;
 };
 
-const buildSystemPrompt = ({ intent, jurisdiction, context, sensorSnapshot, forecastSummary, taskContext }) => {
+const buildSystemPrompt = ({ intent, jurisdiction, context, sensorSnapshot, forecastSummary, taskContext, marketPricesSummary = '' }) => {
   const base = AGENT_PROMPTS[intent] || AGENT_PROMPTS.general;
   return `${base}
 Jurisdiction: ${jurisdiction}
@@ -176,7 +176,23 @@ Actions allowed:
 - create_task with priority High|Medium|Low
 - update_task with patch fields title/date/priority/description
 - delete_task
-Keep actions <= 2 for typical answers. If unsure, return no actions.
+
+TASK ACTION RULES (MANDATORY — follow strictly for all action types):
+
+[CREATE TASK] — Only create new tasks when the user EXPLICITLY asks to add or schedule something.
+  Trigger phrases: "add a task", "schedule", "remind me", "create a plan", "set a reminder", "plan for", "add to my list", "book".
+  For ALL other messages (greetings, questions, summaries, advice, general chat) set actions to [].
+  NEVER create tasks proactively on your own — no matter how helpful it seems.
+
+[UPDATE TASK] — Use update_task when the user explicitly asks to change, rename, reschedule, reorganise, move, push back, or adjust existing tasks.
+  Trigger phrases: "reschedule", "reorganise", "change the date", "move task", "push back", "adjust dates", "shift by", "start from", "update task", "rename".
+  When rescheduling ALL tasks to a new start date: read each task from the Active Pending Tasks list, compute its offset from the old earliest date, and emit one update_task action per task with the new date offset applied.
+  You may emit up to the maximum allowed actions to cover all tasks that need rescheduling.
+
+[DELETE TASK] — Only delete a task when the user explicitly asks to remove, cancel, or delete it.
+  Trigger phrases: "delete task", "remove task", "cancel task", "clear task".
+
+If uncertain about user intent for any action type, default to actions: [].
 
 Farm Context:
 ${context}
@@ -200,7 +216,7 @@ Policy constraints:
 - When recommending fertilizers or pesticides, provide specific product or brand names along with exact dosages and mixing quantities.
 - For physical tasks, specify the exact methods, depths, and parameters.
 ${ActionEnvelope.formatForModel()}
-You must set actions to an empty array and only write the message.
+You must set actions to an empty array and only write the message. Do NOT create, update, or delete tasks here.
 
 Farm Context:
 ${context}
@@ -217,7 +233,7 @@ Workflow hint: ${workflowHint || ''}`;
 };
 
 export const AgentOrchestrator = {
-  routeQuery: async (userPrompt, intent = 'general') => {
+  routeQuery: async (userPrompt, intent = 'general', chatLog = []) => {
     const context = ContextBuilder.buildFarmContext();
     const languageCode = LanguageService.getCurrentLanguage() || 'en';
     const jurisdiction = PolicyContext.resolveJurisdiction();
@@ -225,7 +241,7 @@ export const AgentOrchestrator = {
     const activeTasks = await TaskRepository.getAllTasks();
     const taskContext = `Active Pending Tasks:\n${activeTasks.length === 0 ? 'None' : activeTasks.map(t => `ID: ${t.id} | Source: ${t.source || 'manual'} | Title: ${t.title} | Date: ${t.date} | Priority: ${t.priority}`).join('\n')}`;
 
-    const { currentFarm } = useUserSessionStore.getState();
+    const { currentFarm, currentSession } = useUserSessionStore.getState();
     const lat = Number(currentFarm?.latitude);
     const lon = Number(currentFarm?.longitude);
     let forecast = null;
@@ -309,7 +325,7 @@ export const AgentOrchestrator = {
         workflowFacts: wfResult.facts || {},
         workflowHint: wfResult.narrativeHint || '',
       });
-      const rawNarrative = await AIService.generateResponse(narrativePrompt, userPrompt, null, { expectJsonEnvelope: true });
+      const rawNarrative = await AIService.generateResponse(narrativePrompt, userPrompt, null, { expectJsonEnvelope: true, noCache: true, chatLog });
       const parsedNarrative = ActionEnvelope.parse(rawNarrative);
       const narrativeEnvelope = parsedNarrative.ok ? parsedNarrative.envelope : { message: safeT('errors:ai.workflow_fallback'), actions: [] };
       const narrativePost = GuardrailsService.postCheck({
@@ -394,7 +410,10 @@ export const AgentOrchestrator = {
     let dynamicUserPrompt = userPrompt;
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
-        const rawResponse = await AIService.generateResponse(systemPrompt, dynamicUserPrompt, null, { expectJsonEnvelope: true });
+        const retryPrefix = attempt > 1 ? `[SYSTEM FEEDBACK - Attempt ${attempt} / Validation Failed]: Your previous attempt was rejected. You must strictly rewrite your response to comply with constraints. Provide a safe workaround or conversational answer if a task was rejected.\n\n` : '';
+        const finalSystemPrompt = retryPrefix + systemPrompt;
+        
+        const rawResponse = await AIService.generateResponse(finalSystemPrompt, dynamicUserPrompt, null, { expectJsonEnvelope: true, noCache: true, chatLog });
         const parsed = ActionEnvelope.parse(rawResponse);
         if (!parsed.ok) {
           throw new Error('Action format is missing or invalid JSON');
@@ -402,7 +421,7 @@ export const AgentOrchestrator = {
 
         const validated = ActionValidator.validateEnvelope({
           envelope: parsed.envelope,
-          context: { maxActions: 3, horizonDays: 180, strict: true, sensorSnapshot, forecastSummary, enforceTimingContext: true },
+          context: { maxActions: 20, horizonDays: 365, strict: true, sensorSnapshot, forecastSummary, enforceTimingContext: true },
         });
         if (!validated.ok) {
           if ((validated.errors || []).includes('missing_soil_context')) throw new Error('missing_soil_context');
@@ -455,7 +474,7 @@ export const AgentOrchestrator = {
           return safeT('errors:ai.action_validation_failed');
         }
         
-        dynamicUserPrompt = `${userPrompt}\n\n[SYSTEM FEEDBACK]: Your previous attempt was rejected. Reason: ${e.message}. You must strictly rewrite your response to comply with constraints. Provide a safe workaround or conversational answer if a task was rejected.`;
+        dynamicUserPrompt = userPrompt;
         await new Promise(r => setTimeout(r, 1500));
       }
     }

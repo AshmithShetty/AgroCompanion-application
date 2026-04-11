@@ -5,7 +5,9 @@ const normalize = (value) => (value || '').toString().trim().toLowerCase();
 export const IrrigationWorkflow = {
   canHandle: (userPrompt) => {
     const t = normalize(userPrompt);
-    return t.includes('irrig') || t.includes('watering') || t.includes('water ') || t.includes('drip') || t.includes('सिंच') || t.includes('पाणी');
+    return t.includes('irrig') || t.includes('drip irrigat') ||
+           t.includes('when to water') || t.includes('how to water') ||
+           t.includes('सिंच') || t.includes('पाणी द');
   },
 
   run: ({ userPrompt, sensorSnapshot, forecast }) => {
@@ -69,16 +71,7 @@ export const IrrigationWorkflow = {
     return {
       ok: true,
       facts: { moisture, rainMm },
-      actions: [
-        {
-          type: 'create_task',
-          title: 'Monitor soil moisture',
-          date: recommendedDate,
-          priority: 'Low',
-          description: 'Re-check soil moisture and crop condition before deciding the next irrigation.',
-          source: 'workflow_irrigation',
-        },
-      ],
+      actions: [],
       narrativeHint: 'monitor',
     };
   },

@@ -60,12 +60,17 @@ export const AssistantScreen = () => {
     setIsLoading(true);
 
     let intent = 'crop';
-    if (query.toLowerCase().includes('price') || query.toLowerCase().includes('sell')) {
+    const q = query.toLowerCase();
+    if (q.includes('price') || q.includes('sell') || q.includes('market')) {
       intent = 'market';
+    } else if (q.includes('schedule') || q.includes('timeline') || q.includes('task') ||
+               q.includes('reorgani') || q.includes('reschedul') || q.includes('calendar') ||
+               q.includes('start from')) {
+      intent = 'general';
     }
 
     try {
-      const aiResponse = await AgentOrchestrator.routeQuery(query, intent);
+      const aiResponse = await AgentOrchestrator.routeQuery(query, intent, chatLog);
       setChatLog(prev => [...prev, { role: 'ai', text: aiResponse }]);
     } catch (e) {
       console.error('AI error:', e);

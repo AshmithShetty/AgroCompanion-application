@@ -38,9 +38,9 @@ export const AgAdvicePolicyV1 = {
       kind: 'refuse',
       tags: ['medical'],
       patterns: [
-        /(?:\bfever\b|\bmedicine\b|\bdoctor\b|\bveterinary\b|\bvet\b|\bpregnan|\bdose\b|\btablet\b)/i,
-        /(?:\bबुखार\b|\bदवा\b|\bडॉक्टर\b|\bपशुचिकित्सा\b|\bडोज\b)/i,
-        /(?:\bताप\b|\bऔषध\b|\bडॉक्टर\b|\bपशुवैद्य\b|\bडोस\b)/i,
+        /(?:\bfever\b|\bmedicine\b|\bdoctor\b|\bveterinary\b|\bvet\b|\bpregnan|\btablet\b)/i,
+        /(?:\bबुखार\b|\bदवा\b|\bडॉक्टर\b|\bपशुचिकित्सा\b)/i,
+        /(?:\bताप\b|\bऔषध\b|\bडॉक्टर\b|\bपशुवैद्य\b)/i,
       ],
       messageKey: 'errors:ai.blocked_medical',
     },
