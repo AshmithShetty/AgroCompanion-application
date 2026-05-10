@@ -1,11 +1,10 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import * as Localization from 'expo-localization';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { EventBusService } from './EventBusService';
-import { DynamicTranslationWarmupService } from './ai/DynamicTranslationWarmupService';
 
 const LANGUAGE_KEY = '@app_language';
+const RESET_KEY = '@app_language_reset_v1';
 
 import enCommon from '../../locales/en/common.json';
 import enAssistant from '../../locales/en/assistant.json';
@@ -80,9 +79,14 @@ const resources = {
 
 class LanguageServiceImpl {
   async init() {
-    // Always force English on boot to prevent AI translation race conditions with initial task population.
-    // The user can manually switch preferences via the Profile/Settings UI post-login.
-    const savedLanguage = 'en';
+    let savedLanguage = await AsyncStorage.getItem(LANGUAGE_KEY);
+    const hasReset = await AsyncStorage.getItem(RESET_KEY);
+    
+    if (!savedLanguage || !hasReset) {
+      savedLanguage = 'en';
+      await AsyncStorage.setItem(LANGUAGE_KEY, 'en');
+      await AsyncStorage.setItem(RESET_KEY, 'true');
+    }
 
     await i18n.use(initReactI18next).init({
       compatibilityJSON: 'v3',
@@ -102,7 +106,7 @@ class LanguageServiceImpl {
     await AsyncStorage.setItem(LANGUAGE_KEY, langCode);
     EventBusService.publish('LANGUAGE_CHANGED', { language: langCode });
 
-    // Fire-and-forget: batch-translate dynamic content so screens update faster.
+    const { DynamicTranslationWarmupService } = require('./ai/DynamicTranslationWarmupService');
     DynamicTranslationWarmupService.warmupOnLanguageChange(langCode).catch(() => {});
   }
 

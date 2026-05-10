@@ -12,6 +12,8 @@ import { WeatherService } from '../services/external/WeatherService';
 import { SatelliteService } from '../services/external/SatelliteService';
 import { useUserSessionStore } from '../store';
 import { theme } from '../theme';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { WeeklyReporterAgent } from '../services/ai/WeeklyReporterAgent';
 
 const parseJson = (value, fallback) => {
   if (!value) {
@@ -30,9 +32,11 @@ export const HomeScreen = () => {
   const [recentTasks, setRecentTasks] = useState([]);
   const [connectionStatus, setConnectionStatus] = useState('connecting');
   const [weatherData, setWeatherData] = useState(null);
+  const [weatherError, setWeatherError] = useState(false);
   const [ndviData, setNdviData] = useState(null);
   const currentFarm = useUserSessionStore(state => state.currentFarm);
   const currentSession = useUserSessionStore(state => state.currentSession);
+  const currentUser = useUserSessionStore(state => state.currentUser);
   const selectedLocation = parseJson(currentFarm?.locationPointJson, null);
   const boundaryGeoJson = parseJson(currentFarm?.boundaryGeoJson, null);
   const previewPolygon = Array.isArray(boundaryGeoJson?.geometry?.coordinates?.[0])
@@ -59,8 +63,11 @@ export const HomeScreen = () => {
     light_lux: 0,
     is_raining: 0
   });
+  const [sensorDataReceived, setSensorDataReceived] = useState(new Set());
 
   useEffect(() => {
+    setSensorDataReceived(new Set());
+
     const initializeDashboard = async () => {
       const allTasks = await TaskRepository.getAllTasks();
       setRecentTasks(allTasks.slice(0, 3));
@@ -71,9 +78,13 @@ export const HomeScreen = () => {
         const forecast = await WeatherService.getForecast(lat, lon);
         if (forecast?.list?.length > 0) {
           setWeatherData(forecast.list[0]);
+          setWeatherError(false);
+        } else {
+          setWeatherError(true);
         }
       } catch (e) {
         console.error('Weather fetch error:', e);
+        setWeatherError(true);
       }
 
       try {
@@ -92,6 +103,22 @@ export const HomeScreen = () => {
         if (val !== null) cachedData[key] = val;
       }
       setSensorData(cachedData);
+
+      try {
+        const userId = currentUser?.id || 'anonymous';
+        const sessionId = currentSession?.id || 'default';
+        const reportKey = `@last_weekly_report_${userId}_${sessionId}`;
+        const lastReportStr = await AsyncStorage.getItem(reportKey);
+        const lastReportDate = lastReportStr ? parseInt(lastReportStr, 10) : 0;
+        if (Date.now() - lastReportDate > 7 * 24 * 60 * 60 * 1000) {
+          const report = await WeeklyReporterAgent.generateWeeklyReport(cachedData);
+          if (report) {
+            await AsyncStorage.setItem(reportKey, Date.now().toString());
+          }
+        }
+      } catch (e) {
+        console.log('Weekly report check failed:', e);
+      }
 
       MQTTClientService.connect();
     };
@@ -117,8 +144,12 @@ export const HomeScreen = () => {
       }),
       EventBusService.subscribe(EVENT_TOPICS.SENSOR_DATA_RECEIVED, (data) => {
         setSensorData(prev => ({ ...prev, [data.type]: data.value }));
+        setSensorDataReceived(prev => {
+          const next = new Set(prev);
+          next.add(data.type);
+          return next;
+        });
         DataAggregator.cacheLatestValue(data.type, data.value);
-
       }),
       EventBusService.subscribe(EVENT_TOPICS.NODE_CONNECTION_RESTORED, () => setConnectionStatus('online')),
       EventBusService.subscribe(EVENT_TOPICS.NODE_CONNECTION_LOST, () => setConnectionStatus('offline'))
@@ -131,6 +162,9 @@ export const HomeScreen = () => {
   }, [currentFarm?.id, currentSession?.id]);
 
   const checkAlert = (type, val) => {
+    if (!sensorDataReceived.has(type)) {
+      return 'no-data';
+    }
     const rules = {
       temperature: { min: 15, max: 35 },
       humidity: { min: 30, max: 90 },
@@ -143,9 +177,7 @@ export const HomeScreen = () => {
       light_lux: { min: 2000, max: 100000 },
       is_raining: { min: 0, max: 0.5 }
     };
-    
     if (!rules[type]) return 'normal';
-    
     if (val < rules[type].min || val > rules[type].max) {
       if (['nitrogen', 'phosphorus', 'potassium'].includes(type) && val < rules[type].min) {
         return 'warning';
@@ -188,6 +220,13 @@ export const HomeScreen = () => {
           <SensorStatusCard style={styles.cardItem} title={t('farm:dashboard.phosphorus', 'Phosphorus')} value={sensorData.phosphorus} unit="mg/kg" iconName="color-fill-outline" status={checkAlert('phosphorus', sensorData.phosphorus)} />
           <SensorStatusCard style={styles.cardItem} title={t('farm:dashboard.potassium', 'Potassium')} value={sensorData.potassium} unit="mg/kg" iconName="color-fill-outline" status={checkAlert('potassium', sensorData.potassium)} />
         </ScrollView>
+
+        {weatherError && (
+          <>
+            <Spacer size="md" />
+            <CustomText variant="caption" color={theme.colors.error}>{t('errors:weather.fetchFailed', 'Weather data unavailable.')}</CustomText>
+          </>
+        )}
 
         {weatherData && (
           <>

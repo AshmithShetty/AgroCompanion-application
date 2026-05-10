@@ -1,10 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LoggerService } from './LoggerService';
+import { useUserSessionStore } from '../../store';
 
 export const UsageTracker = {
   trackFeature: async (featureId) => {
     try {
-      const currentUsage = await AsyncStorage.getItem('feature_usage');
+      const { currentUser } = useUserSessionStore.getState();
+      const userId = currentUser?.id || 'default';
+      const key = `feature_usage_${userId}`;
+
+      const currentUsage = await AsyncStorage.getItem(key);
       const usage = currentUsage ? JSON.parse(currentUsage) : {};
       
       if (!usage[featureId]) {
@@ -14,7 +19,7 @@ export const UsageTracker = {
       usage[featureId].count += 1;
       usage[featureId].lastUsed = Date.now();
       
-      await AsyncStorage.setItem('feature_usage', JSON.stringify(usage));
+      await AsyncStorage.setItem(key, JSON.stringify(usage));
       await LoggerService.log('INFO', 'UsageTracker', `Feature accessed: ${featureId}`);
     } catch (error) {
     }

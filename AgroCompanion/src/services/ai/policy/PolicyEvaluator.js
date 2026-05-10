@@ -1,5 +1,6 @@
 import i18n from 'i18next';
 import { AgAdvicePolicyV1 } from './AgAdvicePolicyV1';
+import { RegionalAdvisoryPolicy } from './RegionalAdvisoryPolicy';
 
 const normalizeJurisdiction = (value) => (value || '').toString().trim().toUpperCase();
 
@@ -46,11 +47,12 @@ const anyRuleMatches = (text, patterns) => {
 export const PolicyEvaluator = {
   policy: AgAdvicePolicyV1,
 
-  evaluate: ({ stage, userPrompt, outputText, jurisdiction, languageCode, contextTags = [] }) => {
+  evaluate: ({ stage, userPrompt, outputText, jurisdiction, languageCode, contextTags = [], districtProfile }) => {
     const policy = AgAdvicePolicyV1;
     const text = stage === 'pre' ? normalizeText(userPrompt) : normalizeText(outputText);
     const juris = normalizeJurisdiction(jurisdiction || policy.jurisdiction.default);
     const lang = (languageCode || 'en').toString().trim().toLowerCase();
+    const profile = districtProfile || RegionalAdvisoryPolicy.defaultProfile;
 
     const userProvidedLabel = detectUserProvidedLabel(userPrompt);
 
@@ -76,9 +78,10 @@ export const PolicyEvaluator = {
       return {
         ok: true,
         kind: 'allow',
-        tags: [],
+        tags: profile?.id && profile.id !== 'default' ? [profile.id] : [],
         jurisdiction: juris,
         languageCode: lang,
+        districtProfile: profile,
       };
     }
 
@@ -86,11 +89,12 @@ export const PolicyEvaluator = {
     return {
       ok: false,
       kind: top.kind || 'refuse',
-      tags: Array.from(new Set([...(top.tags || []), ...contextTags])),
+      tags: Array.from(new Set([...(top.tags || []), ...contextTags, ...(profile?.id && profile.id !== 'default' ? [profile.id] : [])])),
       message: safeT(top.messageKey || 'errors:ai.blocked_generic'),
       jurisdiction: juris,
       languageCode: lang,
       ruleId: top.id,
+      districtProfile: profile,
     };
   },
 };

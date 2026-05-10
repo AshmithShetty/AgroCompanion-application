@@ -19,6 +19,18 @@ export const TranslationRepository = {
     try {
       const coll = database.get('translations');
       await database.write(async () => {
+        const existing = await coll.query(
+          Q.where('original_text', originalText),
+          Q.where('language_code', languageCode)
+        ).fetch();
+
+        if (existing.length > 0) {
+          await existing[0].update(rec => {
+            rec.translatedText = translatedText;
+          });
+          return;
+        }
+
         await coll.create(rec => {
           rec.originalText = originalText;
           rec.languageCode = languageCode;

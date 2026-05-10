@@ -11,6 +11,10 @@ export const ConnectionManager = {
     ConnectionManager.attemptReconnect();
   },
 
+  handleInitialFailure: () => {
+    EventBusService.publish(EVENT_TOPICS.NODE_CONNECTION_LOST, { status: 'unavailable' });
+  },
+
   attemptReconnect: () => {
     if (reconnectAttempts >= MAX_RETRIES) {
       EventBusService.publish(EVENT_TOPICS.NODE_CONNECTION_LOST, { status: 'failed' });

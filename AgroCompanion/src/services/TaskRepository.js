@@ -4,13 +4,22 @@ import { EventBusService } from './EventBusService';
 import { EVENT_TOPICS } from '../utils/EventRegistry';
 import { useUserSessionStore } from '../store';
 
-let resolveOverduePromise = null;
+const resolveOverdueByScope = new Map();
 
 const normalizeDateKey = (value) => {
   if (!value || typeof value !== 'string') {
     return null;
   }
-  const candidate = value.includes('T') ? value.split('T')[0] : value.slice(0, 10);
+  if (value.includes('T') || value.endsWith('Z')) {
+    const dt = new Date(value);
+    if (Number.isNaN(dt.getTime())) return null;
+    const year = dt.getFullYear();
+    const month = String(dt.getMonth() + 1).padStart(2, '0');
+    const day = String(dt.getDate()).padStart(2, '0');
+    const candidate = `${year}-${month}-${day}`;
+    return /^\d{4}-\d{2}-\d{2}$/.test(candidate) ? candidate : null;
+  }
+  const candidate = value.slice(0, 10);
   return /^\d{4}-\d{2}-\d{2}$/.test(candidate) ? candidate : null;
 };
 
@@ -96,11 +105,16 @@ const buildScopeQueries = ({ userId, farmId, sessionId }) => {
   return queries;
 };
 
+const getScopeKey = (scope) => {
+  return `${scope.userId || '_'}:${scope.farmId || '_'}:${scope.sessionId || '_'}`;
+};
+
 export const TaskRepository = {
   createTask: async (title, date, priority, type = 'general', source = null, description = '', scope = {}) => {
     const resolvedScope = resolveScope(scope);
     const titleText = (title || '').toString().trim();
-    const dateKey = normalizeDateKey(date);
+    const rawDate = (date || '').toString();
+    const dateKey = normalizeDateKey(rawDate.includes('T') ? rawDate : rawDate);
     const priorityText = (priority || '').toString().trim();
     const descText = (description || '').toString();
 
@@ -143,14 +157,16 @@ export const TaskRepository = {
   },
 
   autoResolveOverdueTasks: async (scope = {}) => {
-    if (resolveOverduePromise) {
-      return resolveOverduePromise;
+    const resolvedScope = resolveScope(scope);
+    const scopeKey = getScopeKey(resolvedScope);
+
+    if (resolveOverdueByScope.has(scopeKey)) {
+      return resolveOverdueByScope.get(scopeKey);
     }
 
-    resolveOverduePromise = (async () => {
+    const promise = (async () => {
       try {
         const tasksCollection = database.get('tasks');
-        const resolvedScope = resolveScope(scope);
         const todayKey = getTodayDateKey();
         const pending = await tasksCollection.query(
           ...buildScopeQueries(resolvedScope),
@@ -177,11 +193,12 @@ export const TaskRepository = {
         EventBusService.publish(EVENT_TOPICS.TASK_RESOLVED, { reason: 'auto_resolve', count: overdue.length });
         return overdue.length;
       } finally {
-        resolveOverduePromise = null;
+        resolveOverdueByScope.delete(scopeKey);
       }
     })();
 
-    return resolveOverduePromise;
+    resolveOverdueByScope.set(scopeKey, promise);
+    return promise;
   },
 
   getAllTasks: async (scope = {}) => {
@@ -191,6 +208,7 @@ export const TaskRepository = {
     return await tasksCollection.query(
       ...buildScopeQueries(resolvedScope),
       Q.where('status', 'pending'),
+      Q.where('priority', Q.notEq('paused')),
       Q.sortBy('date', Q.asc)
     ).fetch();
   },
@@ -229,6 +247,10 @@ export const TaskRepository = {
   },
 
   updateTask: async (taskId, patch = {}, scope = {}) => {
+    if (!patch || typeof patch !== 'object' || Object.keys(patch).length === 0) {
+      return { ok: false, reason: 'empty_patch' };
+    }
+
     const tasksCollection = database.get('tasks');
     const resolvedScope = resolveScope(scope);
     const todayKey = getTodayDateKey();

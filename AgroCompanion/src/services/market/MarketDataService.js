@@ -1,7 +1,7 @@
 import { ConfigService } from '../../utils/ConfigService';
 
 export const MarketDataService = {
-  getMandiPrices: async (commodity, state = 'Karnataka', district = '') => {
+  getMandiPrices: async (commodity, state = '', district = '') => {
     const key = ConfigService.DATA_GOV_KEY;
 
     try {

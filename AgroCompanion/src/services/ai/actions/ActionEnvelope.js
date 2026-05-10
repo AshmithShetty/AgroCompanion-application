@@ -2,6 +2,27 @@ import { buildEmptyEnvelope } from './ActionSchema';
 
 const normalizeText = (value) => (value || '').toString().trim();
 
+const buildExampleAction = (type) => {
+  if (type === 'update_task') {
+    return {
+      type: 'update_task',
+      task_id: 'task_id_here',
+      patch: {
+        date: 'YYYY-MM-DD (optional)',
+        priority: 'High|Medium|Low (optional)',
+        description: 'Only include fields you explicitly want to change. Leave out fields that should remain unmodified.',
+      },
+    };
+  }
+  if (type === 'delete_task') {
+    return {
+      type: 'delete_task',
+      task_id: 'task_id_here',
+    };
+  }
+  return buildEmptyEnvelope('...').actions[0];
+};
+
 const extractJsonCandidate = (rawText) => {
   const text = normalizeText(rawText);
   if (!text) return '';
@@ -57,7 +78,22 @@ export const ActionEnvelope = {
     }
   },
 
-  formatForModel: () => {
-    return `Return a single JSON object (no markdown) with this shape:\n${JSON.stringify(buildEmptyEnvelope('...'))}\nYou may also include an optional "meta" object.`;
+  formatForModel: (options = {}) => {
+    const allowedActionTypes = Array.isArray(options.allowedActionTypes) ? options.allowedActionTypes : ['create_task', 'update_task', 'delete_task'];
+    const includeMeta = Boolean(options.includeMeta);
+    const messagePlaceholder = typeof options.messagePlaceholder === 'string' ? options.messagePlaceholder : '...';
+    const envelope = buildEmptyEnvelope(messagePlaceholder);
+
+    if (allowedActionTypes.length === 0) {
+      envelope.actions = [];
+    } else {
+      envelope.actions = allowedActionTypes.map(type => buildExampleAction(type));
+    }
+
+    if (includeMeta) {
+      envelope.meta = { confidence: 'low|medium|high' };
+    }
+
+    return `Return only one JSON object wrapped in <AGRO_JSON> and </AGRO_JSON>. Do not write markdown or any other text. Shape: <AGRO_JSON>${JSON.stringify(envelope)}</AGRO_JSON>`;
   },
 };

@@ -4,6 +4,7 @@ import { EVENT_TOPICS } from '../../utils/EventRegistry';
 import { NotificationService } from './NotificationService';
 import { NotificationRepository } from './NotificationRepository';
 import { AutoAgronomistAgent } from '../ai/AutoAgronomistAgent';
+import { showAlert } from '../../utils/alert';
 
 export const AlertManager = {
   init: () => {
@@ -20,7 +21,7 @@ export const AlertManager = {
         await NotificationService.scheduleLocalNotification(title, message);
 
         if (alert.severity === 'HIGH') {
-          Alert.alert(`CRITICAL: ${title}`, message, [{ text: 'Take Action' }]);
+          showAlert(`CRITICAL: ${title}`, message, 'error');
         }
       }
     });

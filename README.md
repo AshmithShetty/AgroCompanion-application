@@ -68,7 +68,7 @@ npm install
 cd ..
 ```
 
-### 3) Configure environment variables (AgroCompanion)
+### 3) Configure environment variables
 
 This repo uses Expo public environment variables. Anything named `EXPO_PUBLIC_*` is bundled into the client app for web/mobile, so treat it as non-secret for real deployments.
 
@@ -92,11 +92,28 @@ Key variables:
 
 - `EXPO_PUBLIC_MQTT_BROKER_URL` — MQTT WebSocket broker URL. On a phone, set this to your computer's LAN IP (for example `ws://192.168.1.10:3000`). Defaults to `ws://localhost:3000` if left blank.
 - `EXPO_PUBLIC_GROQ_API_KEY` — Groq API key used by the app for text generation, speech summarization, and STT capabilities.
+- `EXPO_PUBLIC_GROQ_TEXT_MODEL_FAST` — optional lower-cost Groq text model for translation and other lightweight structured tasks.
+- `EXPO_PUBLIC_GROQ_TEXT_MODEL_STRUCTURED` — optional Groq text model for strict JSON workflows such as schedules, farm profiling, and impact calculation.
+- `EXPO_PUBLIC_GROQ_TRANSLATION_MODEL` — optional Groq text model dedicated to translation batches.
 - `EXPO_PUBLIC_OPENWEATHER_KEY` — OpenWeatherMap API key for 5-day forecast data.
 - `EXPO_PUBLIC_DATA_GOV_KEY` — data.gov.in API key for mandi price lookups.
 - `EXPO_PUBLIC_AGROMONITORING_API_KEY` — Agromonitoring API key for satellite NDVI data.
 
-The `demo-controller` does not require its own `.env` to be created — it reads `VITE_API_BASE_URL` and `VITE_MQTT_BROKER_URL` from `demo-controller/.env`, which is already present in the repository pointing to `localhost:3000`.
+The `demo-controller` uses local Vite environment variables and should be configured from the tracked example file:
+
+Windows:
+
+```bash
+copy demo-controller\.env.example demo-controller\.env
+```
+
+macOS / Linux:
+
+```bash
+cp demo-controller/.env.example demo-controller/.env
+```
+
+The default values in `demo-controller/.env.example` already point to `localhost:3000`, so you usually do not need to change them for local development.
 
 ### 4) Run everything
 
@@ -119,6 +136,15 @@ This starts:
 - Demo controller: `npm run dev` (from `demo-controller/`)
 
 To stop all processes, press `Ctrl+C` in the terminal running `start.py`.
+
+## AI Benchmark
+
+To compare the pre-optimization and optimized prompt footprints for representative Groq workflows, run:
+
+```bash
+cd AgroCompanion
+npm run benchmark:ai
+```
 
 ## Using the Demo
 
@@ -190,5 +216,3 @@ npx expo start -c
 
 - **AI tasks duplicate on repeated threshold breach:**
   - The system checks for an existing pending task with the same IoT source (`iot_<sensor>`) before calling the AI. Tasks are auto-resolved when sensor values return to within threshold bounds.
-
-

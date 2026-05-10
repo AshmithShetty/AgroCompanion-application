@@ -33,17 +33,15 @@ class ImpactAutomationServiceImpl {
 
       const taskTitles = resolvedTasks.map(t => `${t.title} (Completed: ${t.date})`);
 
-      const systemPrompt = `You are an AI Impact Calculator. Based ONLY on the following completed agricultural tasks for a ${currentSession.cropType} farm, estimate the aggregate savings or impact.
-Return a STRICT JSON object containing exactly these numeric keys: waterSavedL, fertilizerReducedKg, pesticideReducedG, co2eAvoidedKg.
-If a task implies irrigation optimization, estimate water savings in Liters. 
-If it implies fertilizer/pesticide reduction, estimate in kg/g. 
-Return 0 for metrics that cannot be reasonably estimated.`;
+      const systemPrompt = `You are an AI Impact Calculator. Return only one JSON object with numeric keys waterSavedL, fertilizerReducedKg, pesticideReducedG, co2eAvoidedKg. Use only the completed tasks provided. Return 0 when a metric cannot be estimated.`;
 
       const userPrompt = `Completed Tasks:\n${taskTitles.join('\n')}\nPlease calculate the total impact.`;
 
       AppLogger.publish('AI Impact', 'Calculating savings from completed tasks...');
 
-      const rawResponse = await AIService.generateResponse(systemPrompt, userPrompt);
+      const rawResponse = await AIService.generateResponse(systemPrompt, userPrompt, null, {
+        feature: 'impact',
+      });
       await AIAuditService.logEvent({
         type: 'impact_query',
         languageCode,

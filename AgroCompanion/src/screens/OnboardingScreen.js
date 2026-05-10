@@ -10,6 +10,27 @@ import { Q } from '@nozbe/watermelondb';
 import { showAlert } from '../utils/alert';
 import { FarmSetupService } from '../services/FarmSetupService';
 
+const USERNAME_MIN_LENGTH = 3;
+const USERNAME_MAX_LENGTH = 32;
+const USERNAME_REGEX = /^[a-zA-Z0-9_]+$/;
+
+const validateUsername = (raw) => {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return 'Please enter a username.';
+  }
+  if (trimmed.length < USERNAME_MIN_LENGTH) {
+    return `Username must be at least ${USERNAME_MIN_LENGTH} characters.`;
+  }
+  if (trimmed.length > USERNAME_MAX_LENGTH) {
+    return `Username must be at most ${USERNAME_MAX_LENGTH} characters.`;
+  }
+  if (!USERNAME_REGEX.test(trimmed)) {
+    return 'Username may only contain letters, numbers, and underscores.';
+  }
+  return null;
+};
+
 export const OnboardingScreen = ({ navigation }) => {
   const { t } = useTranslation(['common', 'errors']);
   const [isLoading, setIsLoading] = useState(false);
@@ -19,34 +40,37 @@ export const OnboardingScreen = ({ navigation }) => {
   const containerPadding = isCompact ? 16 : 24;
   const cardPadding = isCompact ? 22 : 32;
   const titleSize = isCompact ? 38 : 48;
-  
+
   const setCurrentUser = useUserSessionStore(state => state.setCurrentUser);
   const setCurrentFarm = useUserSessionStore(state => state.setCurrentFarm);
   const setCurrentSession = useUserSessionStore(state => state.setCurrentSession);
+  const clearState = useUserSessionStore(state => state.clearState);
 
   const handleLogin = async () => {
-    if (!username.trim()) {
-      showAlert(t('common:alerts.error', 'Error'), t('errors:auth.enterUsername', 'Please enter a username.'));
+    const validationError = validateUsername(username);
+    if (validationError) {
+      showAlert(t('common:alerts.error', 'Error'), validationError);
       return;
     }
-    
+
     setIsLoading(true);
     try {
+      clearState();
       const usersCollection = database.get('users');
       const users = await usersCollection.query(Q.where('username', username.trim())).fetch();
-      
+
       if (users.length === 0) {
         showAlert(t('common:alerts.error', 'Error'), t('errors:auth.userNotFound', 'User not found. Please create a new account.'));
         setIsLoading(false);
         return;
       }
-      
+
       const user = users[0];
       setCurrentUser(user);
-      
+
       const farmsCollection = database.get('farms');
       const farms = await farmsCollection.query(Q.where('user_id', user.id)).fetch();
-      
+
       if (farms.length === 0) {
         navigation.replace('FarmSetup');
       } else {
@@ -57,9 +81,11 @@ export const OnboardingScreen = ({ navigation }) => {
           Q.where('farm_id', hydratedFarm.id),
           Q.where('is_active', true)
         ).fetch();
-        
+
         if (activeSessions.length > 0) {
           setCurrentSession(activeSessions[0]);
+        } else {
+          setCurrentSession(null);
         }
         navigation.replace('SessionSelect');
       }
@@ -72,29 +98,36 @@ export const OnboardingScreen = ({ navigation }) => {
   };
 
   const handleNewAccount = async () => {
-    if (!username.trim()) {
-      showAlert(t('common:alerts.error', 'Error'), t('errors:auth.enterUsername', 'Please enter a username.'));
+    const validationError = validateUsername(username);
+    if (validationError) {
+      showAlert(t('common:alerts.error', 'Error'), validationError);
       return;
     }
 
     setIsLoading(true);
     try {
+      clearState();
       const usersCollection = database.get('users');
       const existingUsers = await usersCollection.query(Q.where('username', username.trim())).fetch();
-      
+
       if (existingUsers.length > 0) {
         showAlert(t('common:alerts.error', 'Error'), t('errors:auth.usernameExists', 'Username already exists. Please login.'));
         setIsLoading(false);
         return;
       }
-      
+
       let newUser;
       await database.write(async () => {
+        const doubleCheck = await usersCollection.query(Q.where('username', username.trim())).fetch();
+        if (doubleCheck.length > 0) {
+          newUser = doubleCheck[0];
+          return;
+        }
         newUser = await usersCollection.create(user => {
           user.username = username.trim();
         });
       });
-      
+
       setCurrentUser(newUser);
       navigation.replace('FarmSetup');
     } catch (error) {
@@ -136,6 +169,8 @@ export const OnboardingScreen = ({ navigation }) => {
                 placeholder={t('common:onboarding.usernamePlaceholder', 'e.g. farmer_john')}
                 value={username}
                 onChangeText={setUsername}
+                autoCapitalize="none"
+                autoCorrect={false}
               />
             </View>
 
@@ -166,9 +201,9 @@ export const OnboardingScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#E8F5E9', 
+  container: {
+    flex: 1,
+    backgroundColor: '#E8F5E9',
   },
   flex: {
     flex: 1,
@@ -180,12 +215,12 @@ const styles = StyleSheet.create({
   topSection: {
     alignItems: 'center',
   },
-  title: { 
-    textAlign: 'center', 
-    color: '#2E7D32', 
+  title: {
+    textAlign: 'center',
+    color: '#2E7D32',
     fontWeight: '700'
   },
-  subtitle: { 
+  subtitle: {
     color: '#4CAF50',
     textAlign: 'center',
     marginTop: 8,
@@ -212,10 +247,10 @@ const styles = StyleSheet.create({
     color: '#757575',
     marginBottom: 24
   },
-  authContainer: { 
+  authContainer: {
     marginBottom: 16
   },
-  footer: { 
+  footer: {
   },
   primaryBtn: {
     marginBottom: 24

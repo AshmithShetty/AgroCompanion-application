@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { SafeAreaView, View, StyleSheet, ScrollView, TextInput, ActivityIndicator, TouchableOpacity } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { SafeAreaView, View, StyleSheet, ScrollView, TextInput, ActivityIndicator, TouchableOpacity, Image } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Header, CustomText, Spacer, VoiceInputButton } from '../components';
 import { SelectField } from '../components/molecule/SelectField';
@@ -12,6 +12,9 @@ import { useUserSessionStore } from '../store';
 import { showAlert } from '../utils/alert';
 import { theme } from '../theme';
 
+const CHAT_LOG_MAX = 100;
+const IMAGE_SIZE_LIMIT_BYTES = 4 * 1024 * 1024;
+
 export const AssistantScreen = () => {
   const { t } = useTranslation(['assistant', 'common']);
   const currentSession = useUserSessionStore(state => state.currentSession);
@@ -23,9 +26,9 @@ export const AssistantScreen = () => {
     { code: 'kn', label: 'Kannada' },
     { code: 'mr', label: 'Marathi' },
   ];
-  const initialLangCode = LanguageService.getCurrentLanguage() || 'en';
-  const initialLangLabel = languageChoices.find(x => x.code === initialLangCode)?.label || 'English';
-  const [languageLabel, setLanguageLabel] = useState(initialLangLabel);
+
+  const [currentLangCode, setCurrentLangCode] = useState(LanguageService.getCurrentLanguage() || 'en');
+  const languageLabel = languageChoices.find(x => x.code === currentLangCode)?.label || 'English';
 
   const [query, setQuery] = useState('');
   const [chatLog, setChatLog] = useState([
@@ -33,10 +36,17 @@ export const AssistantScreen = () => {
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const scrollRef = useRef(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollToEnd({ animated: true });
+    }
+  }, [chatLog, isLoading]);
 
   const toggleListening = async () => {
     if (isListening) return;
-
     setIsListening(true);
     try {
       const text = await VoiceService.startSpeechToText();
@@ -51,30 +61,53 @@ export const AssistantScreen = () => {
     }
   };
 
-  const handleSend = async () => {
-    if (!query.trim()) return;
+  const detectIntent = (text) => {
+    if (!text) return 'crop';
+    const q = text.toLowerCase();
+    if (q.includes('price') || q.includes('sell') || q.includes('market')) {
+      return 'market';
+    }
+    if (
+      q.includes('schedule') || q.includes('timeline') || q.includes('task') ||
+      q.includes('reorgani') || q.includes('reschedul') || q.includes('calendar') ||
+      q.includes('start from')
+    ) {
+      return 'general';
+    }
+    return 'crop';
+  };
 
-    const userMessage = { role: 'user', text: query };
-    setChatLog(prev => [...prev, userMessage]);
+  const doSend = async () => {
+    if (isLoading) return;
+    if (!query.trim() && !selectedImage) return;
+
+    const currentQuery = query;
+    const currentImage = selectedImage;
+
+    const userMessage = {
+      role: 'user',
+      text: currentQuery || (currentImage ? t('assistant:chat.imageUploaded', '[Image Uploaded]') : ''),
+      imageUri: currentImage?.uri
+    };
+
+    setChatLog(prev => [...prev, userMessage].slice(-CHAT_LOG_MAX));
     setQuery('');
+    setSelectedImage(null);
     setIsLoading(true);
 
-    let intent = 'crop';
-    const q = query.toLowerCase();
-    if (q.includes('price') || q.includes('sell') || q.includes('market')) {
-      intent = 'market';
-    } else if (q.includes('schedule') || q.includes('timeline') || q.includes('task') ||
-               q.includes('reorgani') || q.includes('reschedul') || q.includes('calendar') ||
-               q.includes('start from')) {
-      intent = 'general';
-    }
+    const intent = detectIntent(currentQuery);
 
     try {
-      const aiResponse = await AgentOrchestrator.routeQuery(query, intent, chatLog);
-      setChatLog(prev => [...prev, { role: 'ai', text: aiResponse }]);
+      let aiResponse;
+      if (currentImage) {
+        aiResponse = await AgentOrchestrator.analyzeImage(currentImage.base64, currentQuery, intent);
+      } else {
+        aiResponse = await AgentOrchestrator.routeQuery(currentQuery, intent, chatLog);
+      }
+      setChatLog(prev => [...prev, { role: 'ai', text: aiResponse }].slice(-CHAT_LOG_MAX));
     } catch (e) {
       console.error('AI error:', e);
-      setChatLog(prev => [...prev, { role: 'ai', text: t('common:assistant.aiReachError', 'Something went wrong reaching the AI. Please try again.') }]);
+      setChatLog(prev => [...prev, { role: 'ai', text: t('common:assistant.aiReachError', 'Something went wrong reaching the AI. Please try again.') }].slice(-CHAT_LOG_MAX));
     } finally {
       setIsLoading(false);
     }
@@ -96,17 +129,14 @@ export const AssistantScreen = () => {
     });
 
     if (!result.canceled) {
-      setChatLog(prev => [...prev, { role: 'user', text: t('assistant:chat.imageUploaded', '[Image Uploaded]') }]);
-      setIsLoading(true);
-      try {
-        const visionResponse = await AgentOrchestrator.analyzeImage(result.assets[0].base64);
-        setChatLog(prev => [...prev, { role: 'ai', text: visionResponse }]);
-      } catch (e) {
-        console.error('Vision error:', e);
-        setChatLog(prev => [...prev, { role: 'ai', text: t('common:assistant.imageAnalysisFailed', 'Image analysis failed. Please try again.') }]);
-      } finally {
-        setIsLoading(false);
+      const asset = result.assets[0];
+      const base64 = asset.base64 || '';
+      const estimatedBytes = Math.round(base64.length * 0.75);
+      if (estimatedBytes > IMAGE_SIZE_LIMIT_BYTES) {
+        showAlert('Image too large', 'The selected image is too large to process. Please choose a smaller or lower resolution image.');
+        return;
       }
+      setSelectedImage({ uri: asset.uri, base64 });
     }
   };
 
@@ -124,38 +154,56 @@ export const AssistantScreen = () => {
             const choice = languageChoices.find(x => x.label === label);
             if (!choice) return;
             await LanguageService.setLanguage(choice.code);
-            setLanguageLabel(choice.label);
+            setCurrentLangCode(choice.code);
+            setChatLog([
+              { role: 'ai', text: t('assistant:chat.greeting', { cropType, defaultValue: `Welcome! I am your active AI Agronomist. How can I assist with your ${cropType} today?` }) }
+            ]);
           }}
         />
       </View>
-      
-      <ScrollView contentContainerStyle={styles.chatArea}>
+
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.chatArea}>
         {chatLog.map((msg, index) => (
           <View key={index} style={[styles.messageBubble, msg.role === 'user' ? styles.userBubble : styles.aiBubble]}>
-            <CustomText color={msg.role === 'user' ? theme.colors.surface : theme.colors.text}>
-              {msg.text}
-            </CustomText>
+            {msg.imageUri && (
+              <Image source={{ uri: msg.imageUri }} style={styles.chatImage} />
+            )}
+            {!!msg.text && (
+              <CustomText color={msg.role === 'user' ? theme.colors.surface : theme.colors.text}>
+                {msg.text}
+              </CustomText>
+            )}
           </View>
         ))}
         {isLoading && <ActivityIndicator size="small" color={theme.colors.primary} style={styles.loader} />}
       </ScrollView>
 
+      {selectedImage && (
+        <View style={styles.imagePreviewContainer}>
+          <Image source={{ uri: selectedImage.uri }} style={styles.imagePreview} />
+          <TouchableOpacity style={styles.removeImageBtn} onPress={() => setSelectedImage(null)}>
+            <Ionicons name="close-circle" size={24} color={theme.colors.error} />
+          </TouchableOpacity>
+        </View>
+      )}
+
       <View style={styles.inputArea}>
         <TouchableOpacity style={styles.camBtn} onPress={handleImagePick} activeOpacity={0.7}>
           <Ionicons name="camera-outline" size={26} color={theme.colors.primary} />
         </TouchableOpacity>
-        
-        <TextInput 
-          style={styles.input} 
-          placeholder={t('assistant:chat.placeholder', 'Ask about your crops...')} 
+
+        <TextInput
+          style={styles.input}
+          placeholder={t('assistant:chat.placeholder', 'Ask about your crops...')}
           value={query}
           onChangeText={setQuery}
-          onSubmitEditing={handleSend}
+          onSubmitEditing={isLoading ? undefined : doSend}
+          editable={!isLoading}
         />
-        
+
         <VoiceInputButton isListening={isListening} onPress={toggleListening} />
-        <TouchableOpacity style={styles.sendBtn} onPress={handleSend} disabled={isLoading || !query.trim()}>
-          <Ionicons name="send" size={22} color={(!query.trim() || isLoading) ? theme.colors.textLight : theme.colors.primary} />
+        <TouchableOpacity style={styles.sendBtn} onPress={doSend} disabled={isLoading || (!query.trim() && !selectedImage)}>
+          <Ionicons name="send" size={22} color={(!query.trim() && !selectedImage || isLoading) ? theme.colors.textLight : theme.colors.primary} />
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -166,29 +214,29 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },
   languageRow: { paddingHorizontal: theme.spacing.md, paddingTop: theme.spacing.sm },
   chatArea: { padding: theme.spacing.md, paddingBottom: 40 },
-  messageBubble: { 
-    maxWidth: '80%', padding: theme.spacing.md, borderRadius: theme.radius.lg, marginBottom: theme.spacing.sm 
+  messageBubble: {
+    maxWidth: '80%', padding: theme.spacing.md, borderRadius: theme.radius.lg, marginBottom: theme.spacing.sm
   },
-  userBubble: { 
-    backgroundColor: theme.colors.primary, alignSelf: 'flex-end', borderBottomRightRadius: 0 
+  userBubble: {
+    backgroundColor: theme.colors.primary, alignSelf: 'flex-end', borderBottomRightRadius: 0
   },
-  aiBubble: { 
+  aiBubble: {
     backgroundColor: theme.colors.surface, alignSelf: 'flex-start', borderBottomLeftRadius: 0,
     borderWidth: 1, borderColor: theme.colors.border
   },
   loader: { alignSelf: 'flex-start', marginVertical: theme.spacing.sm },
-  inputArea: { 
+  inputArea: {
     flexDirection: 'row', padding: theme.spacing.md, backgroundColor: theme.colors.surface,
     borderTopWidth: 1, borderColor: theme.colors.border, alignItems: 'center'
   },
-  input: { 
+  input: {
     flex: 1, height: 48, backgroundColor: theme.colors.background, borderRadius: theme.radius.md,
     paddingHorizontal: theme.spacing.md, marginHorizontal: theme.spacing.sm,
     borderWidth: 1, borderColor: theme.colors.border
   },
-  camBtn: { 
-    padding: 10, 
-    justifyContent: 'center', 
+  camBtn: {
+    padding: 10,
+    justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: theme.colors.primary,
@@ -199,5 +247,32 @@ const styles = StyleSheet.create({
     padding: 10,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  chatImage: {
+    width: 200,
+    height: 150,
+    borderRadius: theme.radius.sm,
+    marginBottom: theme.spacing.sm,
+    resizeMode: 'cover'
+  },
+  imagePreviewContainer: {
+    padding: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
+    borderTopWidth: 1,
+    borderColor: theme.colors.border,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  imagePreview: {
+    width: 60,
+    height: 60,
+    borderRadius: theme.radius.sm,
+    resizeMode: 'cover'
+  },
+  removeImageBtn: {
+    marginLeft: -15,
+    marginTop: -10,
+    backgroundColor: theme.colors.surface,
+    borderRadius: 12,
   }
 });

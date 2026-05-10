@@ -1,9 +1,5 @@
-import { Alert, Platform } from 'react-native';
+import { useAlertStore } from '../store';
 
-export const showAlert = (title, message) => {
-  if (Platform.OS === 'web') {
-    window.alert(`${title}: ${message}`);
-  } else {
-    Alert.alert(title, message);
-  }
+export const showAlert = (title, message, type = 'error') => {
+  useAlertStore.getState().show(title, message, type);
 };

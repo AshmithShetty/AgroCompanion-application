@@ -11,6 +11,7 @@ import { Session } from './models/Session';
 import { Notification } from './models/Notification';
 import { Translation } from './models/Translation';
 import { ImpactEvent } from './models/ImpactEvent';
+import { SensorLog } from './models/SensorLog';
 import { ConfigService } from '../utils/ConfigService';
 import { DEMO_TASKS } from '../utils/mockData';
 
@@ -26,7 +27,7 @@ const adapter = new LokiJSAdapter({
 
 export const database = new Database({
   adapter,
-  modelClasses: [Task, DataCache, RequestQueue, User, Farm, Session, Notification, Translation, ImpactEvent],
+  modelClasses: [Task, DataCache, RequestQueue, User, Farm, Session, Notification, Translation, ImpactEvent, SensorLog],
 });
 
 export const DatabaseService = {

@@ -20,7 +20,7 @@ const Placeholder = ({ title }) => (
   </View>
 );
 
-export const TaskDetailScreen = () => <Placeholder title="Task Detail Screen" />;
+const TaskDetailScreen = () => <Placeholder title="Task Detail Screen" />;
 
 export { 
   HomeScreen, 
@@ -34,7 +34,8 @@ export {
   MarketScreen, 
   NotificationInboxScreen,
   ImpactDetailsScreen,
-  ImpactLogEventScreen
+  ImpactLogEventScreen,
+  TaskDetailScreen
 };
 
 const styles = StyleSheet.create({

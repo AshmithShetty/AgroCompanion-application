@@ -6,49 +6,136 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Header, CustomText, Card, Spacer } from '../components';
 import { MarketDataService } from '../services/market/MarketDataService';
+import { YieldPredictorAgent } from '../services/ai/YieldPredictorAgent';
+import { PriceForecastingService } from '../services/market/PriceForecastingService';
+import { InventoryRepository } from '../services/inventory/InventoryRepository';
+import { TaskRepository } from '../services/TaskRepository';
 import { useUserSessionStore } from '../store';
 import { theme } from '../theme';
+import { districtKnowledgeBase } from '../data/districtKnowledgeBase';
 
-const STATES = ['Karnataka', 'Maharashtra', 'Uttar Pradesh', 'Punjab', 'Gujarat', 'Tamil Nadu'];
+const STATES = [
+  'Andaman and Nicobar Islands', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar',
+  'Chandigarh', 'Chhattisgarh', 'Dadra and Nagar Haveli and Daman and Diu', 'Delhi', 'Goa',
+  'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jammu and Kashmir', 'Jharkhand', 'Karnataka',
+  'Kerala', 'Ladakh', 'Lakshadweep', 'Madhya Pradesh', 'Maharashtra', 'Manipur',
+  'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Puducherry', 'Punjab', 'Rajasthan',
+  'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal'
+];
 
 export const MarketScreen = () => {
   const currentSession = useUserSessionStore(state => state.currentSession);
   const currentFarm = useUserSessionStore(state => state.currentFarm);
   const cropType = currentSession?.cropType || '';
 
-  const [commodity, setCommodity] = useState(cropType);
-  const [state, setState] = useState('Karnataka');
+  const [commodity, setCommodity] = useState(() => {
+    if (currentSession?.cropType) return currentSession.cropType.toLowerCase();
+    return '';
+  });
+  const [state, setState] = useState(() => {
+    if (currentFarm?.districtName) {
+      const knowledge = districtKnowledgeBase[currentFarm.districtName.toLowerCase()];
+      if (knowledge && knowledge.state) return knowledge.state;
+    }
+    return 'Karnataka';
+  });
   const [marketPrices, setMarketPrices] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [yieldPrediction, setYieldPrediction] = useState(null);
+  const [futurePrices, setFuturePrices] = useState([]);
+  const [selectedFutureIndex, setSelectedFutureIndex] = useState(0);
+  const [inventory, setInventory] = useState([]);
+  const fetchAbortRef = React.useRef(false);
+
+  const parsePriceInt = (raw) => {
+    if (!raw && raw !== 0) return 0;
+    const cleaned = String(raw).replace(/,/g, '');
+    const n = parseInt(cleaned, 10);
+    return Number.isFinite(n) ? n : 0;
+  };
 
   const loadPrices = async (refresh = false) => {
-    if (!commodity.trim()) return;
+    const query = commodity.trim().toLowerCase();
+    if (!query) return;
+    if (isLoading || isRefreshing) {
+      fetchAbortRef.current = true;
+    }
+    fetchAbortRef.current = false;
     if (refresh) setIsRefreshing(true);
     else setIsLoading(true);
     setError(null);
 
     try {
-      const prices = await MarketDataService.getMandiPrices(commodity.trim(), state);
+      const prices = await MarketDataService.getMandiPrices(query, state);
+      if (fetchAbortRef.current) return;
       setMarketPrices(prices || []);
+      if (prices && prices.length > 0) {
+        const livePrice = parsePriceInt(prices[0].modal_price);
+        const plantingTimestamp = Number(currentSession?.startDate) || Date.now();
+        const plantingDateStr = new Date(plantingTimestamp).toISOString();
+
+        let harvestDateOverride = null;
+        if (currentSession?.id) {
+          const tasks = await TaskRepository.getAllTasks({ sessionId: currentSession.id });
+          const harvestTask = tasks.find(t => {
+            const title = t.title.toLowerCase();
+            return title.includes('harvest') || title.includes('picking') || title.includes('collection');
+          });
+          if (harvestTask) {
+            harvestDateOverride = harvestTask.date;
+          }
+        }
+
+        const forecastedPrices = PriceForecastingService.getForecasts(
+          livePrice,
+          query,
+          plantingDateStr,
+          harvestDateOverride
+        );
+        setFuturePrices(forecastedPrices || []);
+        setSelectedFutureIndex(0);
+        const pred = await YieldPredictorAgent.predictYieldAndFinance(prices.slice(0, 3), forecastedPrices);
+        if (!fetchAbortRef.current) {
+          setYieldPrediction(pred);
+        }
+      }
     } catch (e) {
-      setError('Could not fetch prices. Check your connection or try again.');
-      setMarketPrices([]);
+      if (!fetchAbortRef.current) {
+        setError('Could not fetch prices. Check your connection or try again.');
+        setMarketPrices([]);
+      }
     } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
+      if (!fetchAbortRef.current) {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
     }
   };
 
+  const loadInventory = async () => {
+    const data = await InventoryRepository.getInventory();
+    setInventory(data);
+  };
+
   useEffect(() => {
-    if (commodity) loadPrices();
+    if (commodity && state) {
+      loadPrices();
+    }
+    loadInventory();
   }, []);
 
   const getPriceStatus = (modal, min, max) => {
-    const mid = (parseFloat(min) + parseFloat(max)) / 2;
-    if (parseFloat(modal) > mid * 1.1) return { label: 'High', color: '#2E7D32' };
-    if (parseFloat(modal) < mid * 0.9) return { label: 'Low', color: '#C62828' };
+    const modalNum = parsePriceInt(modal);
+    const minNum = parsePriceInt(min);
+    const maxNum = parsePriceInt(max);
+    if (minNum === maxNum) {
+      return { label: 'Fair', color: '#E65100' };
+    }
+    const mid = (minNum + maxNum) / 2;
+    if (modalNum > mid * 1.1) return { label: 'High', color: '#2E7D32' };
+    if (modalNum < mid * 0.9) return { label: 'Low', color: '#C62828' };
     return { label: 'Fair', color: '#E65100' };
   };
 
@@ -59,7 +146,14 @@ export const MarketScreen = () => {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => loadPrices(true)} tintColor={theme.colors.primary} />}
       >
-        {/* Session Info Banner */}
+        {!currentSession && (
+          <View style={[styles.banner, { backgroundColor: '#E65100' }]}>
+            <CustomText variant="caption" color="#fff">
+              No active session. Select or create a session to see crop-specific market data.
+            </CustomText>
+          </View>
+        )}
+
         {currentSession && (
           <View style={styles.banner}>
             <CustomText variant="caption" color="#fff">
@@ -68,7 +162,6 @@ export const MarketScreen = () => {
           </View>
         )}
 
-        {/* Search Controls */}
         <Card style={styles.searchCard}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
             <Ionicons name="search-outline" size={20} color={theme.colors.text} style={{ marginRight: 6 }} />
@@ -119,7 +212,74 @@ export const MarketScreen = () => {
 
         <Spacer size="md" />
 
-        {/* Results */}
+        {yieldPrediction && (
+          <Card style={[styles.card, { backgroundColor: '#e8f5e9' }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+              <Ionicons name="trending-up-outline" size={20} color={theme.colors.primary} style={{ marginRight: 6 }} />
+              <CustomText variant="subheading" color={theme.colors.primary} style={{ fontWeight: '700' }}>
+                Yield & Finance Forecast
+              </CustomText>
+            </View>
+            <CustomText variant="caption" color={theme.colors.textLight} style={{ marginBottom: 12 }}>
+              AI prediction based on farm size, crop type, and current market trends.
+            </CustomText>
+            
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+              <View>
+                <CustomText variant="caption">Est. Yield</CustomText>
+                <CustomText variant="body" style={{ fontWeight: '700' }}>{yieldPrediction.predictedYieldQuintals} Quintals</CustomText>
+              </View>
+              <View>
+                <CustomText variant="caption">Est. Price</CustomText>
+                <CustomText variant="body" style={{ fontWeight: '700' }}>₹{yieldPrediction.predictedPricePerQuintal}/Q</CustomText>
+              </View>
+            </View>
+            
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#ccc', paddingTop: 8, marginBottom: 8 }}>
+              <View>
+                <CustomText variant="caption">Est. Revenue</CustomText>
+                <CustomText variant="body" style={{ fontWeight: '700' }}>₹{yieldPrediction.estimatedRevenue}</CustomText>
+              </View>
+              <View>
+                <CustomText variant="caption">Est. Profit</CustomText>
+                <CustomText variant="body" style={{ fontWeight: '700', color: theme.colors.primary }}>₹{yieldPrediction.estimatedNetProfit}</CustomText>
+              </View>
+            </View>
+
+            {yieldPrediction.priceTrends && yieldPrediction.priceTrends.length > 0 && (
+              <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#ccc' }}>
+                <CustomText variant="subheading" style={{ fontWeight: '700', marginBottom: 8 }}>
+                  Harvest & Future Projections
+                </CustomText>
+                {yieldPrediction.priceTrends.map((trend, idx) => (
+                  <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <View>
+                      <CustomText variant="body" style={{ fontWeight: '600' }}>{trend.period}</CustomText>
+                      <CustomText variant="caption" color={theme.colors.textLight}>{trend.dateStr}</CustomText>
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <CustomText variant="body" style={{ fontWeight: '700', color: trend.trend === 'up' ? '#2E7D32' : trend.trend === 'down' ? '#C62828' : theme.colors.text }}>
+                        ₹{trend.predictedPrice}/Q
+                      </CustomText>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            <View style={{ marginTop: 12, padding: 10, backgroundColor: '#fff', borderRadius: 8 }}>
+              <CustomText variant="caption" style={{ fontWeight: '700', color: theme.colors.primary, marginBottom: 4 }}>
+                AI Recommendation:
+              </CustomText>
+              <CustomText variant="caption" color={theme.colors.text}>
+                {yieldPrediction.recommendation || yieldPrediction.reasoning}
+              </CustomText>
+            </View>
+          </Card>
+        )}
+
+        <Spacer size="md" />
+
         {error && (
           <Card style={[styles.card, { borderLeftWidth: 4, borderLeftColor: '#C62828' }]}>
             <CustomText color="#C62828">{error}</CustomText>
@@ -183,7 +343,88 @@ export const MarketScreen = () => {
           </Card>
         )}
 
-        {/* Government Schemes */}
+        <Spacer size="md" />
+
+        {futurePrices.length > 0 && (
+          <Card style={styles.card}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+              <Ionicons name="calendar-outline" size={20} color={theme.colors.text} style={{ marginRight: 6 }} />
+              <CustomText variant="subheading" style={{ fontWeight: '700' }}>
+                Future Price Forecaster
+              </CustomText>
+            </View>
+            <CustomText variant="caption" color={theme.colors.textLight} style={{ marginBottom: 12 }}>
+              Select a post-harvest timeline to check expected pricing for {commodity}.
+            </CustomText>
+            
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+              {futurePrices.map((forecast, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  style={[styles.stateChip, selectedFutureIndex === idx && styles.stateChipActive]}
+                  onPress={() => setSelectedFutureIndex(idx)}
+                >
+                  <CustomText
+                    variant="caption"
+                    color={selectedFutureIndex === idx ? '#fff' : theme.colors.text}
+                  >
+                    {forecast.period}
+                  </CustomText>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {futurePrices[selectedFutureIndex] && (
+              <View style={{ padding: 12, backgroundColor: theme.colors.surface, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View>
+                    <CustomText variant="body" style={{ fontWeight: '600' }}>{futurePrices[selectedFutureIndex].period}</CustomText>
+                    <CustomText variant="caption" color={theme.colors.textLight}>{futurePrices[selectedFutureIndex].dateStr}</CustomText>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <CustomText variant="h3" style={{ color: theme.colors.primary }}>
+                      ₹{futurePrices[selectedFutureIndex].predictedPrice}
+                    </CustomText>
+                    <CustomText variant="caption" color={theme.colors.textLight}>/Quintal</CustomText>
+                  </View>
+                </View>
+              </View>
+            )}
+          </Card>
+        )}
+
+        <Spacer size="md" />
+        
+        <Card style={styles.card}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="cube-outline" size={20} color={theme.colors.text} style={{ marginRight: 6 }} />
+              <CustomText variant="subheading" style={{ fontWeight: '700' }}>Virtual Inventory</CustomText>
+            </View>
+            <TouchableOpacity onPress={loadInventory}>
+              <Ionicons name="refresh-outline" size={20} color={theme.colors.primary} />
+            </TouchableOpacity>
+          </View>
+          <CustomText variant="caption" color={theme.colors.textLight} style={{ marginBottom: 12 }}>
+            Materials tracked by AI agent. Automatically deducted on task creation.
+          </CustomText>
+
+          {inventory.length === 0 ? (
+            <CustomText variant="body" color={theme.colors.textLight} style={{ textAlign: 'center', marginVertical: 10 }}>
+              No inventory tracked.
+            </CustomText>
+          ) : (
+            inventory.map((item, idx) => (
+              <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: theme.colors.border, paddingVertical: 8 }}>
+                <CustomText variant="body" style={{ fontWeight: '600' }}>{item.name}</CustomText>
+                <CustomText variant="body" color={item.quantity > 5 ? theme.colors.primary : '#C62828'} style={{ fontWeight: '700' }}>
+                  {item.quantity} {item.unit || 'units'}
+                </CustomText>
+              </View>
+            ))
+          )}
+        </Card>
+
         <Spacer size="md" />
         <Card style={styles.card}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>

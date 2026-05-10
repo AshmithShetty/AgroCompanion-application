@@ -14,6 +14,6 @@ export const NetworkMonitor = {
   
   checkConnection: async () => {
     const state = await NetInfo.fetch();
-    return state.isConnected && state.isInternetReachable;
+    return Boolean(state.isConnected && (state.isInternetReachable ?? true));
   }
 };

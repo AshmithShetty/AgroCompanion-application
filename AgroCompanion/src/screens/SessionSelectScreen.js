@@ -15,6 +15,7 @@ export const SessionSelectScreen = ({ navigation }) => {
   const [isRefreshingFarm, setIsRefreshingFarm] = useState(false);
 
   const currentFarm = useUserSessionStore(state => state.currentFarm);
+  const currentSession = useUserSessionStore(state => state.currentSession);
   const setCurrentSession = useUserSessionStore(state => state.setCurrentSession);
   const setCurrentFarm = useUserSessionStore(state => state.setCurrentFarm);
 
@@ -29,7 +30,8 @@ export const SessionSelectScreen = ({ navigation }) => {
 
       const sessionsCollection = database.get('sessions');
       const farmSessions = await sessionsCollection.query(
-        Q.where('farm_id', currentFarm.id)
+        Q.where('farm_id', currentFarm.id),
+        Q.where('is_active', true)
       ).fetch();
       setSessions(farmSessions);
     };
@@ -109,23 +111,33 @@ export const SessionSelectScreen = ({ navigation }) => {
 
       <ScrollView style={styles.list}>
         {sessions.length === 0 ? (
-          <CustomText style={styles.emptyText}>No sessions found for this farm.</CustomText>
+          <CustomText style={styles.emptyText}>No active sessions found for this farm.</CustomText>
         ) : (
-          sessions.map(session => (
-            <Pressable
-              key={session.id}
-              style={({ pressed }) => [styles.card, pressed ? styles.cardPressed : null]}
-              onPress={() => handleSelectSession(session)}
-            >
-              <CustomText variant="h2">{session.cropType}</CustomText>
-              <CustomText variant="body">
-                Method: {session.farmingMethod || 'N/A'} | Soil: {session.soilType || 'N/A'}
-              </CustomText>
-              <CustomText variant="caption" style={styles.date}>
-                Started: {new Date(session.startDate).toLocaleDateString()}
-              </CustomText>
-            </Pressable>
-          ))
+          sessions.map(session => {
+            const isActive = currentSession?.id === session.id;
+            return (
+              <Pressable
+                key={session.id}
+                style={({ pressed }) => [styles.card, isActive && styles.cardActive, pressed ? styles.cardPressed : null]}
+                onPress={() => handleSelectSession(session)}
+              >
+                <View style={styles.cardHeader}>
+                  <CustomText variant="h2">{session.cropType}</CustomText>
+                  {isActive ? (
+                    <View style={styles.activeBadge}>
+                      <CustomText variant="caption" color="#fff">Current</CustomText>
+                    </View>
+                  ) : null}
+                </View>
+                <CustomText variant="body">
+                  Method: {session.farmingMethod || 'N/A'} | Soil: {session.soilType || 'N/A'}
+                </CustomText>
+                <CustomText variant="caption" style={styles.date}>
+                  Started: {new Date(session.startDate).toLocaleDateString()}
+                </CustomText>
+              </Pressable>
+            );
+          })
         )}
       </ScrollView>
 
@@ -178,6 +190,23 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 2,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  cardActive: {
+    borderColor: theme.colors.primary,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.xs,
+  },
+  activeBadge: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
   },
   cardPressed: {
     opacity: 0.88,

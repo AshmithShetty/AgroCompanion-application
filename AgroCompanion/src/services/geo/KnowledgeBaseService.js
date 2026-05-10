@@ -17,30 +17,19 @@ const buildCondensedKnowledge = (markdown) => {
     .filter(Boolean);
 
   const keywords = [
-    'soil',
-    'rainfall',
-    'irrigation',
-    'crop',
-    'rice',
-    'paddy',
-    'wheat',
-    'maize',
-    'tomato',
-    'apple',
-    'pear',
-    'plum',
-    'banana',
-    'arecanut',
-    'coconut',
-    'pepper',
-    'cashew',
-    'farming',
-    'horticulture',
-    'vegetable',
-    'pulses',
-    'oilseed',
-    'flood',
-    'drought',
+    'soil', 'rainfall', 'irrigation', 'crop', 'farming', 'horticulture', 'vegetable',
+    'pulses', 'oilseed', 'flood', 'drought', 'management', 'sowing', 'variety',
+    'cultivar', 'plantation', 'yield', 'productivity', 'season', 'kharif', 'rabi',
+    'summer', 'monsoon', 'intercropping', 'mulching', 'fertilizer', 'pesticide',
+    'rice', 'paddy', 'wheat', 'maize', 'sorghum', 'pearl millet', 'bajra', 'jowar',
+    'finger millet', 'ragi', 'barley', 'gram', 'chickpea', 'pigeon pea', 'tur',
+    'black gram', 'green gram', 'lentil', 'pea', 'groundnut', 'soybean', 'sesame',
+    'mustard', 'linseed', 'sunflower', 'cotton', 'jute', 'sugarcane', 'tobacco',
+    'potato', 'onion', 'tomato', 'brinjal', 'chilli', 'ladies finger', 'bhindi',
+    'cabbage', 'cauliflower', 'mango', 'banana', 'citrus', 'guava', 'apple',
+    'pear', 'plum', 'peach', 'apricot', 'cherry', 'walnut', 'almond', 'sapota',
+    'jackfruit', 'arecanut', 'coconut', 'cashew', 'rubber', 'pepper', 'ginger',
+    'turmeric', 'coffee', 'tea'
   ];
 
   const matchingSegments = [];
@@ -60,6 +49,17 @@ const buildCondensedKnowledge = (markdown) => {
 
 export const KnowledgeBaseService = {
   getSupportedDistricts: () => Object.values(districtKnowledgeBase),
+
+  listDistricts: () => Object.values(districtKnowledgeBase),
+
+  getDistrictByCode: (districtId) => districtKnowledgeBase[districtId] || null,
+
+  getDistrictCentroids: () =>
+    Object.values(districtKnowledgeBase).map(district => ({
+      code: district.id,
+      name: district.name,
+      centroid: district.centroid,
+    })),
 
   getDistrictKnowledge: (districtId) => {
     const district = getDistrictKnowledge(districtId);

@@ -3,6 +3,7 @@ import { Q } from '@nozbe/watermelondb';
 import { useUserSessionStore } from '../../store';
 import { CacheManager } from '../CacheManager';
 import { ImpactFactors } from './ImpactFactors';
+import { ImpactAgent } from '../ai/ImpactAgent';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -360,25 +361,40 @@ export const MetricsCalculator = {
       ? computeCo2eKg({ dieselL: baselineTotals.dieselL || 0, electricityKwh: baselineTotals.electricityKwh || 0 })
       : null;
 
-    const waterSavedL = baselineTotals?.irrigationL === null || baselineTotals?.irrigationL === undefined
-      ? null
-      : clamp0(baselineTotals.irrigationL - actualTotals.irrigationL);
+    const areaHa = safeAreaHectares(farm);
+    const aiImpact = await ImpactAgent.analyzeImpact(events, baselineTotals, areaHa);
 
-    const fertilizerReducedKg = baselineTotals?.fertilizerKg === null || baselineTotals?.fertilizerKg === undefined
-      ? null
-      : clamp0(baselineTotals.fertilizerKg - actualTotals.fertilizerKg);
+    let waterSavedL = null;
+    let fertilizerReducedKg = null;
+    let pesticideReducedG = null;
+    let co2eAvoidedKg = null;
+    let netIncomeChangeInr = null;
 
-    const pesticideReducedG = baselineTotals?.pesticideG === null || baselineTotals?.pesticideG === undefined
-      ? null
-      : clamp0(baselineTotals.pesticideG - actualTotals.pesticideG);
+    if (aiImpact) {
+      waterSavedL = aiImpact.waterSavedL;
+      fertilizerReducedKg = aiImpact.fertilizerReducedKg;
+      pesticideReducedG = aiImpact.pesticideReducedG;
+      co2eAvoidedKg = aiImpact.co2eAvoidedKg;
+      netIncomeChangeInr = aiImpact.netIncomeChangeInr;
+    } else {
+      waterSavedL = baselineTotals?.irrigationL === null || baselineTotals?.irrigationL === undefined
+        ? null
+        : clamp0(baselineTotals.irrigationL - actualTotals.irrigationL);
+      fertilizerReducedKg = baselineTotals?.fertilizerKg === null || baselineTotals?.fertilizerKg === undefined
+        ? null
+        : clamp0(baselineTotals.fertilizerKg - actualTotals.fertilizerKg);
+      pesticideReducedG = baselineTotals?.pesticideG === null || baselineTotals?.pesticideG === undefined
+        ? null
+        : clamp0(baselineTotals.pesticideG - actualTotals.pesticideG);
+      co2eAvoidedKg = baselineCo2eKg === null || baselineCo2eKg === undefined
+        ? null
+        : clamp0(baselineCo2eKg - actualCo2eKg);
+      netIncomeChangeInr = baselineTotals?.netIncomeInr === null || baselineTotals?.netIncomeInr === undefined
+        ? null
+        : (netIncomeInr - baselineTotals.netIncomeInr);
+    }
 
-    const co2eAvoidedKg = baselineCo2eKg === null || baselineCo2eKg === undefined
-      ? null
-      : clamp0(baselineCo2eKg - actualCo2eKg);
-
-    const netIncomeChangeInr = baselineTotals?.netIncomeInr === null || baselineTotals?.netIncomeInr === undefined
-      ? null
-      : (netIncomeInr - baselineTotals.netIncomeInr);
+    const rating = co2eAvoidedKg > 50 ? 'Excellent' : (co2eAvoidedKg > 10 ? 'Good' : 'Fair');
 
     const result = {
       sessionId,
@@ -393,9 +409,66 @@ export const MetricsCalculator = {
       co2eActualKg: roundTo(actualCo2eKg, 2),
       netIncomeChangeInr: netIncomeChangeInr === null ? null : roundTo(netIncomeChangeInr, 0),
       netIncomeInr: roundTo(netIncomeInr, 0),
+      rating: rating
     };
 
     await CacheManager.setCache(cacheKey, result, 'impact_metrics', 1);
     return result;
   },
+
+  getCarbonBaseline: async (scope = {}) => {
+    const resolvedScope = resolveScope(scope);
+    const { currentSession, currentFarm } = useUserSessionStore.getState();
+    const session = currentSession;
+    const farm = currentFarm;
+    const ageDays = computeAgeDays(session);
+
+    const { baselineTotals } = await buildBaseline({
+      resolvedScope,
+      currentSession: session,
+      currentFarm: farm,
+      currentAgeDays: ageDays,
+    });
+
+    if (!baselineTotals) return 200; // Final fallback if no history
+
+    return computeCo2eKg({ 
+      dieselL: baselineTotals.dieselL || 0, 
+      electricityKwh: baselineTotals.electricityKwh || 0 
+    });
+  },
+
+  getRawImpactData: async (scope = {}) => {
+    const resolvedScope = resolveScope(scope);
+    const sessionId = resolvedScope.sessionId;
+    const { currentSession, currentFarm } = useUserSessionStore.getState();
+    const session = currentSession?.id === sessionId ? currentSession : null;
+    const farm = currentFarm;
+    const ageDays = computeAgeDays(session);
+
+    const eventCollection = database.get('impact_events');
+    const events = await eventCollection.query(
+      ...buildScopeQueries({ ...resolvedScope, sessionId }),
+      Q.sortBy('recorded_at', Q.desc)
+    ).fetch();
+
+    const actualTotals = aggregateEvents(events, toMs(session?.startDate), null);
+    
+    const { baselineTotals } = await buildBaseline({
+      resolvedScope,
+      currentSession: session,
+      currentFarm: farm,
+      currentAgeDays: ageDays,
+    });
+
+    const { TaskRepository } = require('../TaskRepository');
+    const resolvedTasks = await TaskRepository.getResolvedTasks({ sessionId });
+
+    return {
+      events: events.map(e => ({ type: e.type, quantity: e.quantity, unit: e.unit, recordedAt: e._raw.recorded_at })),
+      actualTotals,
+      baselineTotals,
+      resolvedTaskCount: resolvedTasks?.length || 0
+    };
+  }
 };

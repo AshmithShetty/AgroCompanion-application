@@ -1,6 +1,7 @@
 import { ACTION_TYPES } from './ActionSchema';
 import { TaskRepository } from '../../TaskRepository';
 import { AppLogger } from '../../iot/AppLogger';
+import { InventoryAgent } from '../InventoryAgent';
 
 export const ActionExecutor = {
   execute: async ({ envelope, context }) => {
@@ -12,6 +13,8 @@ export const ActionExecutor = {
     };
 
     const actions = Array.isArray(envelope?.actions) ? envelope.actions : [];
+    const createdTasksBatch = [];
+    
     for (const action of actions) {
       const type = action?.type;
       if (type === ACTION_TYPES.CREATE_TASK) {
@@ -26,6 +29,7 @@ export const ActionExecutor = {
         if (res?.ok) {
           results.created.push({ task: res.task });
           AppLogger.publish('Task Scheduled', `${action.title} | ${action.date} | ${action.priority}`);
+          createdTasksBatch.push({ title: action.title, description: action.description || '' });
         } else {
           results.rejected.push({ type, reason: res?.reason || 'rejected' });
         }
@@ -50,6 +54,10 @@ export const ActionExecutor = {
           results.rejected.push({ type, reason: res?.reason || 'rejected' });
         }
       }
+    }
+
+    if (createdTasksBatch.length > 0) {
+      InventoryAgent.processTasksForInventory(createdTasksBatch).catch(e => console.log('Inventory error:', e));
     }
 
     return results;

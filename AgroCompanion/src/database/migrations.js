@@ -88,5 +88,19 @@ export const migrations = schemaMigrations({
         }),
       ],
     },
+    {
+      toVersion: 9,
+      steps: [
+        createTable({
+          name: 'sensor_logs',
+          columns: [
+            { name: 'farm_id', type: 'string', isIndexed: true },
+            { name: 'type', type: 'string', isIndexed: true },
+            { name: 'value', type: 'number' },
+            { name: 'recorded_at', type: 'number', isIndexed: true },
+          ],
+        }),
+      ],
+    },
   ],
 });

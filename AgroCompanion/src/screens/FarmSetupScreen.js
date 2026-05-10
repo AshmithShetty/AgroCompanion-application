@@ -39,6 +39,8 @@ export const FarmSetupScreen = ({ navigation }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [statusText, setStatusText] = useState('');
 
+  const FARM_NAME_MAX_LENGTH = 80;
+
   useEffect(() => {
     if (!currentFarm) {
       return;
@@ -89,10 +91,8 @@ export const FarmSetupScreen = ({ navigation }) => {
     setSelectedLocation(location);
     setMapCenter({ latitude: location.latitude, longitude: location.longitude });
     setSearchResults([]);
-    if (polygonPoints.length) {
-      setPolygonPoints([]);
-      setDrawMode(false);
-    }
+    setPolygonPoints([]);
+    setDrawMode(false);
   };
 
   const handleMapPointSelected = (event) => {
@@ -165,8 +165,23 @@ export const FarmSetupScreen = ({ navigation }) => {
         locationPoint: selectedLocation,
         polygonPoints,
       });
-      setStatusText('Farm analysis completed.');
       setCurrentFarm(savedFarm);
+
+      if (Number(savedFarm.boundaryAreaHectares) <= 0.001) {
+        showAlert('Area too small', 'The drawn boundary has a near-zero area. Please draw a larger boundary around your farm.');
+        setIsSaving(false);
+        setStatusText('');
+        return;
+      }
+
+      if (savedFarm.contextStatus !== 'ready') {
+        showAlert(
+          'Analysis incomplete',
+          'Your farm was saved, but district analysis did not complete. Some features may be limited. You can retry from the Session Select screen.'
+        );
+      }
+
+      setStatusText('Farm analysis completed.');
       navigation.replace('SessionSelect');
     } catch (error) {
       showAlert('Save failed', error.message || 'Unable to save the farm details.');
@@ -184,7 +199,8 @@ export const FarmSetupScreen = ({ navigation }) => {
           label="Farm Name"
           placeholder="e.g. Green Valley Farm"
           value={farmName}
-          onChangeText={setFarmName}
+          onChangeText={(text) => setFarmName(text.slice(0, FARM_NAME_MAX_LENGTH))}
+          maxLength={FARM_NAME_MAX_LENGTH}
         />
 
         <CustomText variant="h3" style={styles.sectionTitle}>Search Location</CustomText>

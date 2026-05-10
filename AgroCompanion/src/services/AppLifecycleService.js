@@ -2,6 +2,7 @@ import { AppState } from 'react-native';
 import { useAppStateStore } from '../store';
 import { ImpactAutomationService } from './analytics/ImpactAutomationService';
 import { ThresholdManager } from './iot/ThresholdManager';
+import { SensorHistoryService } from './iot/SensorHistoryService';
 import { TaskRepository } from './TaskRepository';
 
 let midnightTimer = null;
@@ -40,5 +41,6 @@ export const AppLifecycleService = {
     });
     ImpactAutomationService.init();
     ThresholdManager.init();
+    SensorHistoryService.init();
   }
 };

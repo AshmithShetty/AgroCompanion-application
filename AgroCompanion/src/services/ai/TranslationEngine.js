@@ -21,7 +21,6 @@ class TranslationEngineImpl {
     const cooldownUntil = this.langCooldownUntil.get(targetLang) || 0;
     if (Date.now() < cooldownUntil) return;
 
-    // De-dupe to avoid paying twice for repeated strings.
     const uniqueTexts = Array.from(new Set(cleaned));
     const results = await TranslationService.translateArray(uniqueTexts, targetLang, sourceLang);
 
@@ -63,7 +62,7 @@ class TranslationEngineImpl {
         }
         
         if (this.timeout) clearTimeout(this.timeout);
-        this.timeout = setTimeout(() => this.processQueue(), 300);
+        this.timeout = setTimeout(() => this.processQueue(), 800);
       }
     });
   }
@@ -82,6 +81,7 @@ class TranslationEngineImpl {
     for (const lang of Object.keys(byLang)) {
       const items = byLang[lang];
       const texts = items.map(i => i.text);
+      const uniqueTexts = Array.from(new Set(texts));
 
       try {
         const cooldownUntil = this.langCooldownUntil.get(lang) || 0;
@@ -90,25 +90,15 @@ class TranslationEngineImpl {
           continue;
         }
 
-        const results = await TranslationService.translateArray(texts, lang, 'auto');
+        const results = await TranslationService.translateArray(uniqueTexts, lang, 'auto');
         this.langFailureCount.set(lang, 0);
+        const resultMap = new Map(uniqueTexts.map((text, index) => [text, results[index]]));
 
-        const anyDifferent = Array.isArray(results) && results.some((r, idx) => {
-          const original = texts[idx];
-          return typeof r === 'string' && r.trim() !== '' && r !== original;
-        });
-        const shouldExpectChange = texts.length > 1 || texts.some(t => typeof t === 'string' && /[a-z]/.test(t) && /\s/.test(t));
-        if (!anyDifferent && shouldExpectChange) {
-          throw new Error('TRANSLATION_NOOP');
-        }
-        
         for (let i = 0; i < texts.length; i++) {
           const original = texts[i];
-          const translatedRaw = results[i];
+          const translatedRaw = resultMap.get(original);
           const translated = (typeof translatedRaw === 'string' && translatedRaw.trim() !== '') ? translatedRaw : original;
 
-          // Avoid "caching failures": when the backend falls back to returning the original text,
-          // don't persist it as a translation, otherwise it will never re-translate later.
           if (translated !== original) {
             if (!this.cache.has(lang)) this.cache.set(lang, {});
             this.cache.get(lang)[original] = translated;

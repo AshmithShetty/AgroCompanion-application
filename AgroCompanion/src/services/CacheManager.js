@@ -1,8 +1,21 @@
 import { database } from '../database';
 import { Q } from '@nozbe/watermelondb';
 
+let resetInProgress = false;
+
 export const CacheManager = {
+  markResetInProgress: () => {
+    resetInProgress = true;
+  },
+
+  markResetComplete: () => {
+    resetInProgress = false;
+  },
+
   setCache: async (key, value, type, ttlDays) => {
+    if (resetInProgress) {
+      return;
+    }
     const cacheCollection = database.get('data_cache');
     const expiry = Date.now() + (ttlDays * 24 * 60 * 60 * 1000);
 
@@ -26,6 +39,9 @@ export const CacheManager = {
   },
 
   getCacheRecord: async (key) => {
+    if (resetInProgress) {
+      return null;
+    }
     const cacheCollection = database.get('data_cache');
     const results = await cacheCollection.query(Q.where('key', key)).fetch();
     return results[0] || null;
@@ -56,6 +72,9 @@ export const CacheManager = {
   },
 
   removeCache: async (key) => {
+    if (resetInProgress) {
+      return;
+    }
     const cacheCollection = database.get('data_cache');
     const results = await cacheCollection.query(Q.where('key', key)).fetch();
     if (results.length === 0) {

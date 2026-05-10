@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, View } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { CustomText } from '../components/atomic/CustomText';
@@ -30,6 +30,25 @@ export const SessionCreateScreen = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState('');
   const [isCalendarVisible, setIsCalendarVisible] = useState(false);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  if (!currentFarm) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }}>
+          <CustomText variant="body">No farm found. Please complete farm setup first.</CustomText>
+          <Button title="Go to Farm Setup" onPress={() => navigation.replace('FarmSetup')} style={{ marginTop: 16 }} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const catalog = useMemo(() => SessionOptionsService.getCatalogForFarm(currentFarm), [currentFarm]);
   const minDate = getLocalDateString();
@@ -52,7 +71,12 @@ export const SessionCreateScreen = ({ navigation }) => {
 
     setIsLoading(true);
     setLoadingStatus('Preparing farm session...');
+    let newSession = null;
+
     try {
+      const sessionsCollection = database.get('sessions');
+      const previousActive = await sessionsCollection.query().fetch();
+
       const envContext = await ContextExtractionAgent.generateEnvironmentalContext(currentFarm, {
         cropType,
         soilType,
@@ -60,10 +84,16 @@ export const SessionCreateScreen = ({ navigation }) => {
         startDate: new Date(startDateStr).getTime(),
       });
 
+      if (!isMountedRef.current) return;
+
       setLoadingStatus('Saving session data...');
-      let newSession;
       await database.write(async () => {
-        newSession = await database.get('sessions').create(session => {
+        for (const prev of previousActive) {
+          if (prev.isActive) {
+            await prev.update(r => { r.isActive = false; });
+          }
+        }
+        newSession = await sessionsCollection.create(session => {
           session.farmId = currentFarm.id;
           session.cropType = cropType;
           session.seedVariety = '';
@@ -77,31 +107,63 @@ export const SessionCreateScreen = ({ navigation }) => {
         });
       });
 
+      if (!isMountedRef.current) return;
+
       setCurrentSession(newSession);
 
       setLoadingStatus('Generating task schedule...');
-      const tasksCreated = await ScheduleAgent.generateMasterSchedule({
+      const scheduleResult = await ScheduleAgent.generateMasterSchedule({
         cropType,
         soilType,
         farmingMethod,
         startDate: new Date(startDateStr).getTime(),
       }, `${currentFarm.farmContext || ''}\n${envContext}`);
 
-      if (!tasksCreated) {
+      if (!isMountedRef.current) return;
+
+      if (!scheduleResult.success) {
         await database.write(async () => {
           await newSession.destroyPermanently();
         });
         setCurrentSession(null);
-        showAlert('AI Network Error', 'Failed to generate initial AI task schedule. The session was not saved. Please check your connection and try again.');
+        const isNetworkError = scheduleResult.error?.includes('Network error') || scheduleResult.error?.includes('timeout') || scheduleResult.error?.includes('fetch failed');
+        const title = isNetworkError ? 'AI Network Error' : 'Schedule Generation Failed';
+        const message = isNetworkError
+          ? 'Failed to generate initial AI task schedule due to a network issue. The session was not saved. Please check your connection and try again.'
+          : `The session was not saved. AI Error: ${scheduleResult.error}`;
+        showAlert(title, message);
         return;
       }
 
-      navigation.navigate('Main');
+      if (scheduleResult.tasksCreated === 0) {
+        await database.write(async () => {
+          await newSession.destroyPermanently();
+        });
+        setCurrentSession(null);
+        showAlert('Schedule Generation Failed', 'The AI did not produce any valid tasks. The session was not saved. Please try again.');
+        return;
+      }
+
+      if (isMountedRef.current) {
+        navigation.navigate('Main');
+      }
     } catch (error) {
-      showAlert('Session failed', 'Unable to initialize the farm session.');
+      if (newSession && isMountedRef.current) {
+        try {
+          await database.write(async () => {
+            await newSession.destroyPermanently();
+          });
+        } catch (_) {}
+        setCurrentSession(null);
+      }
+      if (isMountedRef.current) {
+        showAlert('Session failed', 'Unable to initialize the farm session.');
+      }
     } finally {
-      setIsLoading(false);
-      setLoadingStatus('');
+      if (isMountedRef.current) {
+        setIsLoading(false);
+        setLoadingStatus('');
+      }
     }
   };
 

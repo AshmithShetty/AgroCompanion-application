@@ -6,6 +6,7 @@ import { LoggerService } from '../../services/analytics/LoggerService';
 import { DemoDataService } from '../../services/DemoDataService';
 import { theme } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
+import { showAlert } from '../../utils/alert';
 
 export const DebugConsole = ({ visible, onClose }) => {
   const [logs, setLogs] = useState([]);
@@ -29,9 +30,9 @@ export const DebugConsole = ({ visible, onClose }) => {
   const handleResetDemoData = async () => {
     try {
       await DemoDataService.resetToDemoState();
-      Alert.alert("Success", "Demo data has been reset successfully.");
+      showAlert("Success", "Demo data has been reset successfully.", "success");
     } catch (error) {
-      Alert.alert("Error", "Failed to reset demo data.");
+      showAlert("Error", "Failed to reset demo data.", "error");
     }
   };
 

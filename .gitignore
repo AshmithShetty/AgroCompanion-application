@@ -1,3 +1,4 @@
+# Shared dependency folders across all subprojects
 node_modules/
 npm-debug.log*
 yarn-debug.log*
@@ -16,10 +17,13 @@ AgroCompanion/dist/
 AgroCompanion/android/
 AgroCompanion/ios/
 
+# Local environment files
 .env
 .env.*
 AgroCompanion/.env
 AgroCompanion/.env.*
+demo-controller/.env
+simulation-server/.env
 !.env.example
 !**/.env.example
 

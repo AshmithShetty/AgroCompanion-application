@@ -1,7 +1,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb';
 
 export const schema = appSchema({
-  version: 8,
+  version: 9,
   tables: [
     tableSchema({
       name: 'users',
@@ -118,6 +118,15 @@ export const schema = appSchema({
         { name: 'original_text', type: 'string', isIndexed: true },
         { name: 'language_code', type: 'string', isIndexed: true },
         { name: 'translated_text', type: 'string' },
+      ]
+    }),
+    tableSchema({
+      name: 'sensor_logs',
+      columns: [
+        { name: 'farm_id', type: 'string', isIndexed: true },
+        { name: 'type', type: 'string', isIndexed: true },
+        { name: 'value', type: 'number' },
+        { name: 'recorded_at', type: 'number', isIndexed: true },
       ]
     })
   ]

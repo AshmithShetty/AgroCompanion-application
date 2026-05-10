@@ -67,12 +67,20 @@ const isTimingSensitive = (text) => {
 };
 
 const missingCriticalSoilSignals = (sensorSnapshot) => {
-  const moisture = sensorSnapshot?.soil_moisture;
-  const ph = sensorSnapshot?.soil_ph;
-  const nitrogen = sensorSnapshot?.nitrogen;
-  const phosphorus = sensorSnapshot?.phosphorus;
-  const potassium = sensorSnapshot?.potassium;
-  const missingAny = [moisture, ph, nitrogen, phosphorus, potassium].some(v => v === null || typeof v === 'undefined');
+  if (!sensorSnapshot || typeof sensorSnapshot !== 'object') {
+    return false;
+  }
+  const moisture = sensorSnapshot.soil_moisture;
+  const ph = sensorSnapshot.soil_ph;
+  const nitrogen = sensorSnapshot.nitrogen;
+  const phosphorus = sensorSnapshot.phosphorus;
+  const potassium = sensorSnapshot.potassium;
+  const signals = [moisture, ph, nitrogen, phosphorus, potassium];
+  const hasAnyReading = signals.some(v => v !== null && v !== undefined && Number(v) !== 0);
+  if (!hasAnyReading) {
+    return false;
+  }
+  const missingAny = signals.some(v => v === null || typeof v === 'undefined');
   return missingAny;
 };
 
@@ -193,6 +201,18 @@ export const ActionValidator = {
           if (strict) criticalErrors.push('delete_task_id_missing');
           continue;
         }
+
+        const activeTasks = Array.isArray(context?.activeTasks) ? context.activeTasks : [];
+        const taskToDelete = activeTasks.find(t => String(t.id) === String(taskId));
+        if (taskToDelete) {
+          const tTitle = normalizeLower(taskToDelete.title || '');
+          if (containsAny(tTitle, ['sow', 'plant', 'harvest', 'transplant'])) {
+            errors.push('delete_task_protected');
+            if (strict) criticalErrors.push('delete_task_protected');
+            continue;
+          }
+        }
+
         normalized.actions.push({ type, task_id: taskId });
       }
     }

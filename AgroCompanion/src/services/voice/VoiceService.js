@@ -1,7 +1,9 @@
 import { Audio } from 'expo-av';
+import { Platform } from 'react-native';
 import { ConfigService } from '../../utils/ConfigService';
 import { NetworkMonitor } from '../NetworkMonitor';
 import { LanguageService } from '../LanguageService';
+import { AIGatekeeper } from '../ai/AIGatekeeper';
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -21,7 +23,6 @@ class VoiceServiceImpl {
   }
 
   init() {
-    // Placeholder for future voice initialization logic
   }
 
   async startSpeechToText() {
@@ -55,11 +56,19 @@ class VoiceServiceImpl {
     }
 
     const form = new FormData();
-    form.append('file', {
-      uri,
-      name: 'speech.m4a',
-      type: mimeFromUri(uri)
-    });
+    
+    if (Platform.OS === 'web') {
+      const fileRes = await fetch(uri);
+      const blob = await fileRes.blob();
+      form.append('file', blob, 'speech.m4a');
+    } else {
+      form.append('file', {
+        uri,
+        name: 'speech.m4a',
+        type: mimeFromUri(uri)
+      });
+    }
+    
     form.append('model', 'whisper-large-v3-turbo');
 
     const lang = LanguageService.getCurrentLanguage();
@@ -67,13 +76,13 @@ class VoiceServiceImpl {
       form.append('language', lang);
     }
 
-    const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+    const response = await AIGatekeeper.run(() => fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${ConfigService.GROQ_API_KEY}`
       },
       body: form
-    });
+    }));
 
     const json = await response.json().catch(() => ({}));
     if (!response.ok) {
